@@ -1,0 +1,64 @@
+/* CSS on top of Bootstrap - Jon Brown - Nov 2014 */
+
+.table-striped { /* Make table take up much less space */
+  width: 50%;
+}
+
+td { /* JB */
+  text-align: right;
+}
+
+table thead tr th { /* JB */
+  text-align: right;
+}
+
+/* Stock movement colours */
+
+.bigDown {
+  color: red;
+  font-weight: bold;
+  background: yellow;
+}
+
+.bigUp {
+  color: green;
+  font-weight: bold;
+  background: yellow;
+}
+
+.smallDown {
+  color: red;
+}
+
+.smallUp {
+  color: green;
+}
+
+.unchanged {
+  color: blue;
+}
+
+.refresh {
+  background: none;
+  border: none;
+}
+
+.location { /* JB 11 DEC 2014 */
+  background: none;
+  border: none;
+}
+
+.camera { /* JB 11 DEC 2014 */
+  background: none;
+  border: none;
+}
+
+.update { /* Simple x for update */
+  background: none;
+  border: none;
+}
+
+.delete { /* Simple x for delete */
+  background: none;
+  border: none;
+}
