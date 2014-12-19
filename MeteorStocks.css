@@ -12,6 +12,17 @@ table thead tr th { /* JB */
   text-align: right;
 }
 
+/* Dividend colours */
+
+.dateMatch {
+  color: blue;
+  font-weight: bold;
+}
+
+.dateNoMatch {
+/* Nothing special */
+}
+
 /* Stock movement colours */
 
 .bigDown {

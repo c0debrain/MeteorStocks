@@ -27,6 +27,8 @@
 //                      mizzao:bootstrap-3                      3.3.1_1 HTML, CSS, and JS framework fo...
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
+//
+// 18 Dec 2014 - Added dividend information
 
 // These functions are available on both the client and the server ===========================
 
@@ -34,12 +36,24 @@ var greet = function(name) {
     console.log(name);
 }
 
-var ripStock = function(csv) {
+/*
+  var ripStock = function(csv) {
     prices = [];
     prices = csv.split(",");
     return prices[0]; // Stock code
 }
+*/
 
+var isToday = function(date) { // Utility function to see if passed date (dd Mmm) is the same as today
+    var d = new Date();
+    var t = d.toString();
+    var mmm = t.substring(4,7); // Month
+    var dd = t.substring(8,10); // Day
+    var today = dd + " " + mmm;
+    if (date == today) return true;
+    return false;
+}
+    
 Stocks = new Mongo.Collection("Stocks");
     
 if (Meteor.isCordova) {
@@ -76,30 +90,121 @@ if(Meteor.isServer) {
         // Resulting data is like this: ,SUL,9.310,-0.060,-0.64%,
         content = content.substring(1);                   // Drop first comma
         greet("Found "+content);
-          
+        
+        var res = content.split(",");
+        
+        var ticker = res[0];
+        var last   = res[1];
+        var chg    = res[2];
+        var chgpc  = res[3];
+        chgpc = chgpc.replace(/%/g, ''); // Drop the % sign off the end
+        
+        greet(stock + " values : [" + ticker + "] [" + last + "] [" + chg + "] [" + chgpc + "]");
+                    
+//      First check to see if one for this stock already exists - if so, do nothing
+        if (id == 0) // Told this is a new one
+        {
+            var exists = Stocks.find({ticker: ticker}, {reactive: false}).fetch(); // Get any matching record
+            if (exists[0]) // First entry in the array is the record
+            {
+                greet(ticker + " already exists"); // So it was not really new
+                id = exists[0]._id; // so use it instead
+            }
+        }
+        
         if (id == 0)
         { // New item
-            greet("Creating "+ripStock(content));
+            greet(ticker +" Created");
             Stocks.insert({
-              text: content,
+              ticker: ticker, last: last, chg: chg, chgpc: chgpc,
+              XDiv: "", Paid: "", Franked: "", Percent: "",
               createdAt: new Date() // current time
             });
         } else // Update existing item
         {
-            greet("Updating "+ripStock(content));
+            var refresh = Stocks.find({_id: id}, {reactive: false}).fetch(); // Get the record incase dividend processing changed it
+            var rec = refresh[0]; // First entry in the array is the record
+            
+            greet(ticker +" updated");
+//          greet("(dividend is " + rec.XDiv + "," + rec.Paid + "," + rec.Franked + "," + rec.Percent + ")");
+
             Stocks.update(id,{
-              text: content,
+              ticker: ticker, last: last, chg: chg, chgpc: chgpc,
+              XDiv: rec.XDiv, Paid: rec.Paid, Franked: rec.Franked, Percent: rec.Percent,
               createdAt: new Date() // current time
             });        
         }
       }); // Callback
       return true;
     }, //getStock
-    
-    deleteStock: function(id){
-      greet("\nDeleting "+id);
+
+    getDividends: function(){
+      var url = 'https://www.asbsecurities.co.nz/quotes/upcomingevents.aspx';
+      greet("Refreshing dividends");
+      var result = HTTP.call("GET", url);
+      
+      var toRefresh = Stocks.find({}, {reactive: false}).fetch();
+      
+      for (var i in toRefresh)
+      {
+        var sStock = toRefresh[i].ticker;
+      
+        var content = result.content;
+      
+        var pStart = content.search(sStock + "&amp;exchange=ASX");
+      
+        if (pStart > 0)
+        {
+          var pXDiv = content.substring(pStart).search("</td><td>")+9;
+          var pPaid = content.substring(pStart+pXDiv).search("</td><td>")+9;
+          var pFrank = content.substring(pStart+pXDiv+pPaid).search("aligned")+9;
+          var pFrankE= content.substring(pStart+pXDiv+pPaid+pFrank).search("<");
+          var pPC = content.substring(pStart+pXDiv+pPaid+pFrank+pFrankE).search("aligned")+9;
+          var pPCE= content.substring(pStart+pXDiv+pPaid+pFrank+pFrankE+pPC).search("<");
+          
+          var strXDiv = content.substring(pStart+pXDiv,pStart+pXDiv+6); // Use +10 if you want , YY too
+          var strPaid = content.substring(pStart+pXDiv+pPaid,pStart+pXDiv+pPaid+6); // Use +10 if you want , YY too
+          var Franked = content.substring(pStart+pXDiv+pPaid+pFrank,pStart+pXDiv+pPaid+pFrank+pFrankE);
+          var Percent = content.substring(pStart+pXDiv+pPaid+pFrank+pFrankE+pPC,pStart+pXDiv+pPaid+pFrank+pFrankE+pPC+pPCE);
+          greet(sStock + " : [" + strXDiv + "] [" + strPaid + "] [" + Franked + "] [" + Percent + "]");
+          
+          greet("ticker:" + toRefresh[i].ticker);
+          Stocks.update(toRefresh[i]._id,{
+              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: toRefresh[i].chgpc,
+              XDiv: strXDiv, Paid: strPaid, Franked: Franked, Percent: Percent, // Store dividend information
+              createdAt: new Date() // current time
+            }); 
+        }
+        else
+        {
+//        greet("Did not find anything");
+          Stocks.update(toRefresh[i]._id,{
+              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: toRefresh[i].chgpc,
+              XDiv: "", Paid: "", Franked: "", Percent: "", // Wipe any existing dividend that is not longer relevant
+              createdAt: new Date() // current time
+            });
+        }
+      }
+      return true;
+    }, // getDividends
+
+    deleteStock: function(id){      
+      var del = Stocks.find({_id: id}, {reactive: false}).fetch(); // Get the record to delete so we can write the stock to stdout
+      var ticker = del[0].ticker; // First entry in the array is the record
+      greet("\nDeleting "+ticker + " [" + id + "]");
       Stocks.remove(id);
-    } // deleteStock
+    }, // deleteStock
+    
+    KillStock: function(){
+      greet("\nKilling all stocks!");
+      var toKill = Stocks.find({}, {reactive: false}).fetch();
+      for (var i in toKill)
+      {
+        var stock = toKill[i].ticker;
+        greet(i + ") Deleting " + stock + ", id:" + toKill[i]._id);
+        Stocks.remove(toKill[i]._id);
+      }
+    } // KillStock
   });
 }
 
@@ -179,7 +284,7 @@ if(Meteor.isClient) {
     
     stocks: function () {
       // return all the stocks
-      return Stocks.find({}, {sort: {text: 1}}); // To sort by date: {sort: {createdAt: -1}});
+      return Stocks.find({}, {sort: {ticker: 1}}); // To sort by date: {sort: {createdAt: -1}});
     }
   });
   
@@ -197,6 +302,11 @@ if(Meteor.isClient) {
     return 'unchanged';
   });
     
+    Handlebars.registerHelper('getDateClass', function(number) {
+    if (isToday(number)) return 'dateMatch';
+    return 'dateNomatch';
+  });
+      
     Template.body.events({
     "submit .new-stock": function (event) {
     // This function is called when the new stock form is submitted
@@ -205,7 +315,7 @@ if(Meteor.isClient) {
       
     var text = event.target.text.value;
     var details = Meteor.call('getStock', text, 0);
-    
+
     event.target.text.value = ''; // Clear form
     return false; // Prevent default form submit
     },
@@ -216,13 +326,17 @@ if(Meteor.isClient) {
         navigator.vibrate(200); // Vibrate handset
         greet("Bzzzzz");      
       }
+            
       var toRefresh = Stocks.find({}, {reactive: false}).fetch();
       for (var i in toRefresh)
       {
-        var str = ripStock(toRefresh[i].text);
+        var str = toRefresh[i].ticker;
         greet("Refreshing "+str+" at "+toRefresh[i]._id);
         var details = Meteor.call('getStock', str, toRefresh[i]._id);
       }
+      
+      Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
+      
     }, // refresh
     
     "click .location": function () {
@@ -251,14 +365,15 @@ if(Meteor.isClient) {
     
     "click .delete": function () {
       // Remove this entry if x clicked
-      var stock = ripStock(this.text);
-      greet("Deleting "+ripStock(this.text));
+      var stock = this.ticker; // Was ripStock(this.text);
+      greet("Deleting "+this.ticker);
       Meteor.call('deleteStock', this._id);
+//    Meteor.call('KillStock'); // Only for testing!!!
     },
 
     "click .update": function () {
       // Update the values for this item when ? is clicked
-      var stock = ripStock(this.text);
+      var stock = this.ticker;
       greet("Updating "+stock);
       if (Meteor.isCordova) {
         navigator.vibrate(50); // Vibrate handset briefly
@@ -271,33 +386,42 @@ if(Meteor.isClient) {
     Template.stock.helpers({
 
     code: function () { // Formats the stock code
-      var str = ripStock(this.text);
+      var str = this.ticker;
       return str;
     },
 
     last: function () { // Formats last price
-      var info = this.text;
-      prices = [];
-      prices = info.split(",");
-      var str = prices[1].slice(-7,-1); // Last price as dollars and cents
-      return str;
+ //     var info = this.text;
+ //     prices = [];
+ //     prices = info.split(",");
+ //     var str = prices[1].slice(-7,-1); // Last price as dollars and cents
+      return this.last;
     },
     
     chg: function () { // Formats change
-      var info = this.text;
-      prices = [];
-      prices = info.split(",");
-      var str = prices[2].slice(-7,-1); // Change in dollars and cents
-      return str;
+//      var info = this.text;
+//      prices = [];
+//      prices = info.split(",");
+//      var str = prices[2].slice(-7,-1); // Change in dollars and cents
+      return this.chg;
     },
     
     chgPC: function () { // Formats change in percent
-      var info = this.text;
-      prices = [];
-      prices = info.split(",");
-      var str = prices[3].slice(-7,-1); // Change in percent without % sign
-      return str;
-    }
+//      var info = this.text;
+//      prices = [];
+//      prices = info.split(",");
+//      var str = prices[3].slice(-7,-1); // Change in percent without % sign
+      return this.chgpc;
+    },
     
+    dXDiv: function () { // Formats XDiv date display
+        if (isToday(this.XDiv)) return "XD"; // If it's today, say so
+        return this.XDiv; // otherwise return date it's XD
+    },
+    
+    dPaid: function () { // Formats Paid date display
+        if (isToday(this.Paid)) return "Paid"; // If it's today, say so
+        return this.Paid; // otherwise return date it's paid
+    }
   });
 }
