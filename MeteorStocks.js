@@ -29,7 +29,7 @@
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
 // 22 Dec 2014 - Added sorting by 2 columns and stopped storing the + in positve changes
-//               added parseFloat() to ensure Mongo stores as a number for correct sorting
+//               added parseFloat() to ensure Mongo stores last, chg and % change as numbers (not strings) for correct sorting
 //
 // 18 Dec 2014 - Added dividend information
 
@@ -123,7 +123,7 @@ if(Meteor.isServer) {
         { // New item
             greet(ticker +" Created");
             Stocks.insert({
-              ticker: ticker, last: last, chg: chg, chgpc: parseFloat(chgpc),
+              ticker: ticker, last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc),
               XDiv: "", Paid: "", Franked: "", Percent: "",
               createdAt: new Date() // current time
             });
@@ -136,7 +136,7 @@ if(Meteor.isServer) {
 //          greet("(dividend is " + rec.XDiv + "," + rec.Paid + "," + rec.Franked + "," + rec.Percent + ")");
 
             Stocks.update(id,{
-              ticker: ticker, last: last, chg: chg, chgpc: parseFloat(chgpc),
+              ticker: ticker, last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc),
               XDiv: rec.XDiv, Paid: rec.Paid, Franked: rec.Franked, Percent: rec.Percent,
               createdAt: new Date() // current time
             });        
@@ -177,7 +177,7 @@ if(Meteor.isServer) {
           
           greet("ticker:" + toRefresh[i].ticker);
           Stocks.update(toRefresh[i]._id,{
-              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: parseFloat(toRefresh[i].chgpc),
+              ticker: toRefresh[i].ticker, last: parseFloat(toRefresh[i].last), chg: parseFloat(toRefresh[i].chg), chgpc: parseFloat(toRefresh[i].chgpc),
               XDiv: strXDiv, Paid: strPaid, Franked: Franked, Percent: Percent, // Store dividend information
               createdAt: new Date() // current time
             }); 
@@ -186,7 +186,7 @@ if(Meteor.isServer) {
         {
 //        greet("Did not find anything");
           Stocks.update(toRefresh[i]._id,{
-              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: parseFloat(toRefresh[i].chgpc),
+              ticker: toRefresh[i].ticker, last: parseFloat(toRefresh[i].last), chg: parseFloat(toRefresh[i].chg), chgpc: parseFloat(toRefresh[i].chgpc),
               XDiv: "", Paid: "", Franked: "", Percent: "", // Wipe any existing dividend that is not longer relevant
               createdAt: new Date() // current time
             });
@@ -370,10 +370,10 @@ if(Meteor.isClient) {
       var sorting = Session.get("S-sortStocks");
       if (sorting == 1) {
         Session.set("S-sortStocks",-1); // Was ascending, now descending
-        Session.set("S-sortChange",  0);
+        Session.set("S-sortChange", 0);
       } else {
         Session.set("S-sortStocks", 1); // Was descending, now descending
-        Session.set("S-sortChange",  0);
+        Session.set("S-sortChange", 0);
       }    
     }, // sortStocks
 
@@ -382,10 +382,10 @@ if(Meteor.isClient) {
       var sorting = Session.get("S-sortChange");
       if (sorting == 1) {
         Session.set("S-sortChange",-1); // Was ascending, now descending
-        Session.set("S-sortStocks",  0);
+        Session.set("S-sortStocks", 0);
       } else {
         Session.set("S-sortChange", 1); // Was descending, now descending
-        Session.set("S-sortStocks",  0);
+        Session.set("S-sortStocks", 0);
       }    
     }, // sortChange
     
@@ -445,7 +445,7 @@ if(Meteor.isClient) {
  //     prices = [];
  //     prices = info.split(",");
  //     var str = prices[1].slice(-7,-1); // Last price as dollars and cents
-      return this.last;
+      return this.last.toFixed(2); // 2 decimal places
     },
     
     chg: function () { // Formats change
@@ -453,7 +453,7 @@ if(Meteor.isClient) {
 //      prices = [];
 //      prices = info.split(",");
 //      var str = prices[2].slice(-7,-1); // Change in dollars and cents
-      return this.chg;
+      return this.chg.toFixed(2); // 2 decimal places
     },
     
     chgPC: function () { // Formats change in percent
@@ -461,7 +461,7 @@ if(Meteor.isClient) {
 //      prices = [];
 //      prices = info.split(",");
 //      var str = prices[3].slice(-7,-1); // Change in percent without % sign
-      return this.chgpc;
+      return this.chgpc.toFixed(1); // 1 decimal place
     },
     
     dXDiv: function () { // Formats XDiv date display
