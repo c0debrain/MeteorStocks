@@ -59,7 +59,10 @@ Delete, single Update and Refresh enabled. Cordovo included for vibration feedba
 <br>{{GPSLocation}}
 
 <table class="table table-striped">
-  <thead><tr><th style="text-align:left">Stock</th><th>Price</th><th>Change</th><th>%</th><th></th><th></th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr></thead>
+  <thead><tr><th style="text-align:left"><button class="sortStocks">{{StockDir}}</button></th><th>Price</th><th>Change</th><th><button class="sortChange">{{ChangeDir}}</button></th><th></th><th></th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr></thead>
+
+<!-- Original <thead><tr><th style="text-align:left">Stock</th><th>Price</th><th>Change</th><th>%</th><th></th><th></th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr></thead> -->
+
   <tbody>
   {{#each stocks}}
   {{> stock}}

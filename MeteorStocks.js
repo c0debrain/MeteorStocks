@@ -28,6 +28,9 @@
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
+// 22 Dec 2014 - Added sorting by 2 columns and stopped storing the + in positve changes
+//               added parseFloat() to ensure Mongo stores as a number for correct sorting
+//
 // 18 Dec 2014 - Added dividend information
 
 // These functions are available on both the client and the server ===========================
@@ -98,7 +101,11 @@ if(Meteor.isServer) {
         var chg    = res[2];
         var chgpc  = res[3];
         chgpc = chgpc.replace(/%/g, ''); // Drop the % sign off the end
-        
+
+        // Remove the + if there is one in the change or percentage change (22 Dec 2014 to help with sorting by change)
+        chg = chg.replace(/\+/g, '');
+        chgpc = chgpc.replace(/\+/g, '');
+                
         greet(stock + " values : [" + ticker + "] [" + last + "] [" + chg + "] [" + chgpc + "]");
                     
 //      First check to see if one for this stock already exists - if so, do nothing
@@ -116,7 +123,7 @@ if(Meteor.isServer) {
         { // New item
             greet(ticker +" Created");
             Stocks.insert({
-              ticker: ticker, last: last, chg: chg, chgpc: chgpc,
+              ticker: ticker, last: last, chg: chg, chgpc: parseFloat(chgpc),
               XDiv: "", Paid: "", Franked: "", Percent: "",
               createdAt: new Date() // current time
             });
@@ -129,7 +136,7 @@ if(Meteor.isServer) {
 //          greet("(dividend is " + rec.XDiv + "," + rec.Paid + "," + rec.Franked + "," + rec.Percent + ")");
 
             Stocks.update(id,{
-              ticker: ticker, last: last, chg: chg, chgpc: chgpc,
+              ticker: ticker, last: last, chg: chg, chgpc: parseFloat(chgpc),
               XDiv: rec.XDiv, Paid: rec.Paid, Franked: rec.Franked, Percent: rec.Percent,
               createdAt: new Date() // current time
             });        
@@ -170,7 +177,7 @@ if(Meteor.isServer) {
           
           greet("ticker:" + toRefresh[i].ticker);
           Stocks.update(toRefresh[i]._id,{
-              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: toRefresh[i].chgpc,
+              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: parseFloat(toRefresh[i].chgpc),
               XDiv: strXDiv, Paid: strPaid, Franked: Franked, Percent: Percent, // Store dividend information
               createdAt: new Date() // current time
             }); 
@@ -179,7 +186,7 @@ if(Meteor.isServer) {
         {
 //        greet("Did not find anything");
           Stocks.update(toRefresh[i]._id,{
-              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: toRefresh[i].chgpc,
+              ticker: toRefresh[i].ticker, last: toRefresh[i].last, chg: toRefresh[i].chg, chgpc: parseFloat(toRefresh[i].chgpc),
               XDiv: "", Paid: "", Franked: "", Percent: "", // Wipe any existing dividend that is not longer relevant
               createdAt: new Date() // current time
             });
@@ -213,6 +220,9 @@ if(Meteor.isServer) {
 if(Meteor.isClient) {
     greet("Client is alive");
 
+    Session.set("S-sortStocks", 1);  // Default to sorting by Stock name, ascending
+    Session.set("S-sortChange", 0);
+        
     Session.set("GPSLat", ""); // Set GPS to
     Session.set("GPSLong", 0); // be off
         
@@ -271,7 +281,18 @@ if(Meteor.isClient) {
     Meteor.subscribe("stocks");
     
     Template.body.helpers({
-        
+    
+    StockDir: function () { // Format header depending on sort order
+        if (Session.get("S-sortStocks") == -1) return "Stock -";
+        return "Stock";
+    },
+
+    ChangeDir: function () { // Format header depending on sort order
+        if (Session.get("S-sortChange") ==  1) return "% +";
+        if (Session.get("S-sortChange") == -1) return "% -";
+        return "%"; // No particular sort order
+    },
+    
     GPSLocation: function () {
       GPSlat = Session.get("GPSLat");
       GPSlong= Session.get("GPSLong");
@@ -283,8 +304,13 @@ if(Meteor.isClient) {
     },
     
     stocks: function () {
-      // return all the stocks
-      return Stocks.find({}, {sort: {ticker: 1}}); // To sort by date: {sort: {createdAt: -1}});
+    // return all the stocks - sorted as we want
+    // To sort by date: {sort: {createdAt: -1}});
+      if (Session.get("S-sortStocks") != 0) {
+          return Stocks.find({}, {sort: {ticker: Session.get("S-sortStocks")}}); // Display items sorted by Stock
+      } else {
+          return Stocks.find({}, {sort: {chgpc: Session.get("S-sortChange")}}); // Display items sorted by last changed percent
+      }
     }
   });
   
@@ -338,6 +364,30 @@ if(Meteor.isClient) {
       Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
       
     }, // refresh
+    
+    "click .sortStocks": function () {
+      // Sort result by Stock name
+      var sorting = Session.get("S-sortStocks");
+      if (sorting == 1) {
+        Session.set("S-sortStocks",-1); // Was ascending, now descending
+        Session.set("S-sortChange",  0);
+      } else {
+        Session.set("S-sortStocks", 1); // Was descending, now descending
+        Session.set("S-sortChange",  0);
+      }    
+    }, // sortStocks
+
+    "click .sortChange": function () {
+      // Sort result by percent changed
+      var sorting = Session.get("S-sortChange");
+      if (sorting == 1) {
+        Session.set("S-sortChange",-1); // Was ascending, now descending
+        Session.set("S-sortStocks",  0);
+      } else {
+        Session.set("S-sortChange", 1); // Was descending, now descending
+        Session.set("S-sortStocks",  0);
+      }    
+    }, // sortChange
     
     "click .location": function () {
       // Refreshes GPS location
