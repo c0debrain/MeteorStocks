@@ -28,6 +28,39 @@
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
+
+/*
+
+Idea for price sensitive details:
+
+URL:
+
+http://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode=&timeframe=R&dateReleased=22%2F12%2F2014
+
+(date in DD/MM/CCYY)
+
+Basically, find P = <td class="pricesens">, items after next <td> is text of the release.
+then go back P-60. Search for <tr> then <td> - Next 3 chars are the ticker
+Then search fwd for <td> and next chars are time if tou want that.
+
+Perhaps make text of release appear on hover over sensitive flag / icon?
+
+Code snippet is below:
+
+<tr class="altrow">
+<td>NXM</td>
+<td>12:38 PM</td>
+
+<td class="pricesens"><img src="/images/asterix.gif" class="pricesens" alt="asterix" title="price sensitive"></td>
+
+<td>Triumph Gold Project Update</td>
+
+*/
+
+// 14 Jan 2015 - Added Heatmap capability (with font-size=1px workaround)
+//
+// 23 Dec 2014 - Added Yahoo Dow Jones chart and scaled charts to 50% width
+//
 // 22 Dec 2014 - Added sorting by 2 columns and stopped storing the + in positve changes
 //               added parseFloat() to ensure Mongo stores last, chg and % change as numbers (not strings) for correct sorting
 //
@@ -220,9 +253,9 @@ if(Meteor.isServer) {
 if(Meteor.isClient) {
     greet("Client is alive");
 
-    Session.set("S-sortStocks", 1);  // Default to sorting by Stock name, ascending
-    Session.set("S-sortChange", 0);
-        
+    Session.set("S-sortStocks",  0);  // Default to sorting by descending (ie largest rises first) so heatmap looks better
+    Session.set("S-sortChange", -1);
+            
     Session.set("GPSLat", ""); // Set GPS to
     Session.set("GPSLong", 0); // be off
         
@@ -315,24 +348,36 @@ if(Meteor.isClient) {
   });
   
   Handlebars.registerHelper('getSignColour', function(number) {
-    if (number >= 1) return 'green';
-    if (number < -1) return 'red';
-    return 'blue';
-  });
-  
-    Handlebars.registerHelper('getSignClass', function(number) {
-    if (number >=  1) return 'bigUp';
-    if (number <= -1) return 'bigDown';
-    if (number  >  0) return 'smallUp';
-    if (number  <  0) return 'smallDown';
+    if (number > 0) return 'priceUp';
+    if (number < 0) return 'priceDown';
     return 'unchanged';
   });
-    
-    Handlebars.registerHelper('getDateClass', function(number) {
+  
+  Handlebars.registerHelper('getSignClass', function(number) {
+    if (number >=  1) return 'bigUp';
+    if (number <= -1) return 'bigDown';
+    if (number  >  0) return 'priceUp';
+    if (number  <  0) return 'priceDown';
+    return 'unchanged';
+  });
+      
+  Handlebars.registerHelper('getDateClass', function(number) {
     if (isToday(number)) return 'dateMatch';
     return 'dateNomatch';
   });
-      
+
+  Handlebars.registerHelper('getHeatColour', function(number) { // Heatmap colour selection - 14 Jan 2015
+    if (number >=  4) return 'HeatUp3';
+    if (number >=  2) return 'HeatUp2';
+    if (number >=  1) return 'HeatUp1';
+    if (number >   0) return 'HeatUp0';
+    if (number <= -4) return 'HeatDn3';
+    if (number <= -2) return 'HeatDn2';
+    if (number <= -1) return 'HeatDn1';
+    if (number <   0) return 'HeatDn0';
+    return 'HeatFlat';
+  });
+  
     Template.body.events({
     "submit .new-stock": function (event) {
     // This function is called when the new stock form is submitted
@@ -369,10 +414,10 @@ if(Meteor.isClient) {
       // Sort result by Stock name
       var sorting = Session.get("S-sortStocks");
       if (sorting == 1) {
-        Session.set("S-sortStocks",-1); // Was ascending, now descending
+        Session.set("S-sortStocks",-1); // Was in alpha order, now in reverse alpha
         Session.set("S-sortChange", 0);
       } else {
-        Session.set("S-sortStocks", 1); // Was descending, now descending
+        Session.set("S-sortStocks", 1); // Now in alpha order
         Session.set("S-sortChange", 0);
       }    
     }, // sortStocks
@@ -384,7 +429,7 @@ if(Meteor.isClient) {
         Session.set("S-sortChange",-1); // Was ascending, now descending
         Session.set("S-sortStocks", 0);
       } else {
-        Session.set("S-sortChange", 1); // Was descending, now descending
+        Session.set("S-sortChange", 1); // Now ascending order
         Session.set("S-sortStocks", 0);
       }    
     }, // sortChange
@@ -473,5 +518,22 @@ if(Meteor.isClient) {
         if (isToday(this.Paid)) return "Paid"; // If it's today, say so
         return this.Paid; // otherwise return date it's paid
     }
+  });
+    
+    Template.heatmap.helpers({
+
+    code: function () { // Formats the stock code
+      var str = this.ticker;
+      return str;
+    },
+    
+    chgPC: function () { // Formats change in percent
+//      var info = this.text;
+//      prices = [];
+//      prices = info.split(",");
+//      var str = prices[3].slice(-7,-1); // Change in percent without % sign
+      return this.chgpc.toFixed(1); // 1 decimal place
+    }
+    
   });
 }

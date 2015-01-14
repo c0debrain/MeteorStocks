@@ -37,11 +37,11 @@ table thead tr th { /* JB */
   background: yellow;
 }
 
-.smallDown {
+.priceDown {
   color: red;
 }
 
-.smallUp {
+.priceUp {
   color: green;
 }
 
@@ -72,4 +72,52 @@ table thead tr th { /* JB */
 .delete { /* Simple x for delete */
   background: none;
   border: none;
+}
+
+/* Heatmap 14 Jan 2015 - 9 colour range */
+/* Font-size is required to compensate for a bug in the table logic (the workaround of which means setting the font to 1px) */
+
+.HeatUp3 {
+  background: #00B050;
+  font-size: medium;
+}
+
+.HeatUp2 {
+  background: #92D050;
+  font-size: medium;
+}
+
+.HeatUp1 {
+  background: #CCFF99;
+  font-size: medium;
+}
+
+.HeatUp0 {
+  background: #DEFF81;
+  font-size: medium;
+}
+
+.HeatFlat {
+  background: white;
+  font-size: medium;
+}
+
+.HeatDn0 {
+  background: #FFCC99;
+  font-size: medium;
+}
+
+.HeatDn1 {
+  background: #F9AB6B;
+  font-size: medium;
+}
+
+.HeatDn2 {
+  background: #F7633B;
+  font-size: medium;
+}
+
+.HeatDn3 {
+  background: red;
+  font-size: medium;
 }

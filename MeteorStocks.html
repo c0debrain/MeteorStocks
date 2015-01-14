@@ -48,7 +48,7 @@
 <div class="container">
 <header>
 <!--<h1>Stock Monitor</h1>-->Bootstrap 3 with dropdowns, glyphicons and action button. Colour change on values. Async (via callback) remote server calls with CSV parsing.
-Delete, single Update and Refresh enabled. Cordovo included for vibration feedback and GPS location. Camera works now too. Dividends shown.<br><br>  
+Delete, single Update and Refresh enabled. Cordovo included for vibration feedback and GPS location. Camera works now too. Dividends shown. NEW Heatmap<br><br>  
 <form class="new-stock">
   <input type="text" name="text" placeholder="Stock to add" />
 </form>
@@ -58,11 +58,14 @@ Delete, single Update and Refresh enabled. Cordovo included for vibration feedba
 
 <br>{{GPSLocation}}
 
+<!-- font-size of 1px is used to ensure no gaps in table - padding etc don't work -->
+<table style="max-width: 95%; font-size: 1px; font-family: monospace">{{#each stocks}}{{> heatmap}}
+{{/each}}</table>
+
+<br>
+    
 <table class="table table-striped">
   <thead><tr><th style="text-align:left"><button class="sortStocks">{{StockDir}}</button></th><th>Price</th><th>Change</th><th><button class="sortChange">{{ChangeDir}}</button></th><th></th><th></th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr></thead>
-
-<!-- Original <thead><tr><th style="text-align:left">Stock</th><th>Price</th><th>Change</th><th>%</th><th></th><th></th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr></thead> -->
-
   <tbody>
   {{#each stocks}}
   {{> stock}}
@@ -70,51 +73,38 @@ Delete, single Update and Refresh enabled. Cordovo included for vibration feedba
   </tbody>
 </table>
 
-<!--
-<ul>
-  {{#each stocks}}
-  {{> stock}}
-  {{/each}}
-</ul>
--->
+<IMG width=50% SRC="http://www.asx.com.au/asx/widget/chart.do?asxCode=XJO&type=INDEX" alt="<XJO Chart>"/><br><br>
 
-<IMG SRC="http://www.asx.com.au/asx/widget/chart.do?asxCode=XJO&type=INDEX&" alt="<XJO Chart>"/><br><br>
+<IMG width=50% SRC="https://chart.finance.yahoo.com/z?s=^DJI&t=1d" alt="<Dow Chart>"/><br>
 
-<IMG SRC="https://chart.finance.yahoo.com/t?s=AUDUSD=X&width=300&height=180" alt="<Gold Chart>"/><br><br>
+<IMG width=50% SRC="https://chart.finance.yahoo.com/t?s=AUDUSD=X" alt="<Gold Chart>"/><br><br>
 
 <img id="CordovaImage" width='90%' height='90%'/> <!-- Any photo goes here scaled to fit -->
 
 <div class="footer">
-<p>&copy; 2014 Jon Brown - version 18 Dec 2014<br>Meteor 1.0.1 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 14 Jan 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
 </div>
-
+{{getDateClass XDiv}}
 </div>
 </body>
+
+<template name="heatmap">
+<span class="{{getHeatColour chgPC}}">&nbsp;{{code}}&nbsp;</span>
+</template>
 
 <template name="stock">
   <tr>
   <td style="text-align:left"><button class="update">{{code}}</button></td> <!-- 12 Dec 2014 - added ability to update by clicking the stock code -->
   <td>{{last}}</td>
-  <td><span class="{{getSignClass chg}}">{{chg}}</span></td>
+  <td><span class="{{getSignColour chg}}">{{chg}}</span></td>
   <td><span class="{{getSignClass chgPC}}">{{chgPC}}</span></td>
   <td><!--<button class="update"><span class="glyphicon glyphicon-repeat"></span></button> UNUSED --></td> <!-- Added an update option 3 Dec 2014, added glyph 12 Dec 2014 -->
   <td><button class="delete"><span class="glyphicon glyphicon-remove"></span></button></td> <!-- Added a delete option 3 Dec 2014, added glyph 12 Dec 2014 instead of &times; -->
 <!-- Unused technique:
 <td><span class="unchanged" style="color:{{getSignColour chg}}">{{chg}}</span></td> -->
-<td><span class="{{getDateClass XDiv}}">{{dXDiv}}</span></td><!-- 18 Dec 2014 - added dividend details -->
+<td><span class="">{{dXDiv}}</span></td><!-- 18 Dec 2014 - added dividend details -->
 <td><span class="{{getDateClass Paid}}">{{dPaid}}</span></td>
 <td>{{Franked}}</td>
 <td>{{Percent}}</td>
   </tr>
 </template>
-
-<!--
-<template name="stock">
-  <li>
-    <span class="text">{{code}}</span>
-    <span class="text">{{last}}</span>
-    <span class="text">{{chg}}</span>
-    <span class="text">{{chgPC}}</span>
-  </li>
-</template>
--->
