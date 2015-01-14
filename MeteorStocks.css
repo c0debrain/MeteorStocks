@@ -79,45 +79,45 @@ table thead tr th { /* JB */
 
 .HeatUp3 {
   background: #00B050;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatUp2 {
   background: #92D050;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatUp1 {
   background: #CCFF99;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatUp0 {
   background: #DEFF81;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatFlat {
   background: white;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatDn0 {
   background: #FFCC99;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatDn1 {
   background: #F9AB6B;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatDn2 {
   background: #F7633B;
-  font-size: medium;
+  font-size: large;
 }
 
 .HeatDn3 {
   background: red;
-  font-size: medium;
+  font-size: large;
 }
