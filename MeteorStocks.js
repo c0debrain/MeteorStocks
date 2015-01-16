@@ -57,6 +57,11 @@ Code snippet is below:
 
 */
 
+// 16 Jan 2015 - Added Tooltips to Heatmap (could not get Bootstrap ones working due - probably - to CSS conflicts
+//               Trapping N/A returned by Yahoo if stock is not valid)
+//               Added support for non Australian stocks - add .US for US stocks for example eg IBM.US
+//               Much better error checking of input stock code - try and break it!
+//
 // 14 Jan 2015 - Added Heatmap capability (with font-size=1px workaround)
 //
 // 23 Dec 2014 - Added Yahoo Dow Jones chart and scaled charts to 50% width
@@ -109,10 +114,22 @@ if(Meteor.isServer) {
     getStock: function(stock, id){
       var url = 'http://finance.yahoo.com/d/quotes?s=';
       var format = '&f=sl1c1p2'; // Values from Yahoo in CSV format
-      url += stock;
-      if (stock.length == 3) {
-        url += '.AX'; // Make this an Australian stock
+
+//    greet("\nWas " + stock);      
+      stock = stock.replace(/[^A-Za-z0-9\.]/g, ''); // Allow only letters, numbers and dot in input
+//    greet("Now " + stock);
+
+      if (stock.indexOf('.') < 0)
+      {
+        stock += '.AX'; // Make this an Australian stock if no index is provided ie no .XX. So IBM needs to be IBM.US for example
       }
+
+      if (stock.indexOf('.') == 0) // After removing garbage the input may be nothing so will be .AX by now
+      {
+        greet("\nNo valid input for Yahoo");
+        return;
+      }
+      url += stock;
       url += format;
       greet("\nYahooing "+stock);
 //    greet("Finding "+stock+" via "+url);
@@ -121,7 +138,7 @@ if(Meteor.isServer) {
         if (error) return;
         var content = result.content.replace(/\"/g, ','); // Convert all quotes to commas
         content = content.replace(/(\r\n|\n|\r)/gm,'');   // Remove special characters
-        content = content.replace(/.AX/g, '');            // Remove the .AX from stock codes
+ //       content = content.replace(/.AX/g, '');            // Remove the .AX from stock codes
         content = content.replace(/,,/g, ',');            // Remove any double commas
         // Resulting data is like this: ,SUL,9.310,-0.060,-0.64%,
         content = content.substring(1);                   // Drop first comma
@@ -133,15 +150,27 @@ if(Meteor.isServer) {
         var last   = res[1];
         var chg    = res[2];
         var chgpc  = res[3];
-        chgpc = chgpc.replace(/%/g, ''); // Drop the % sign off the end
-
+        chgpc = chgpc.replace(/%/g, ''); // Drop the % sign off the end        
+        
         // Remove the + if there is one in the change or percentage change (22 Dec 2014 to help with sorting by change)
         chg = chg.replace(/\+/g, '');
         chgpc = chgpc.replace(/\+/g, '');
+
+        if (ticker.indexOf('.') < 0) // If a US stock (no index returned by Yahoo) we add .US
+        {
+            ticker += '.US'; // Need to do this so Refresh will work (and not think it's an Australian stock)
+        }
                 
         greet(stock + " values : [" + ticker + "] [" + last + "] [" + chg + "] [" + chgpc + "]");
                     
-//      First check to see if one for this stock already exists - if so, do nothing
+        // First see if we have an invalid stock. Yahoo returns N/A rather than an error message
+        if (chg == "N/A")
+        {
+            greet(ticker +" is an INVALID stock");
+            return;
+        }
+        
+        // Now check to see if one for this stock already exists - if so, do nothing
         if (id == 0) // Told this is a new one
         {
             var exists = Stocks.find({ticker: ticker}, {reactive: false}).fetch(); // Get any matching record
@@ -313,7 +342,9 @@ if(Meteor.isClient) {
     
     Meteor.subscribe("stocks");
     
+//  ========================    
     Template.body.helpers({
+//  ========================    
     
     StockDir: function () { // Format header depending on sort order
         if (Session.get("S-sortStocks") == -1) return "Stock -";
@@ -347,6 +378,8 @@ if(Meteor.isClient) {
     }
   });
   
+//  ========================    
+  
   Handlebars.registerHelper('getSignColour', function(number) {
     if (number > 0) return 'priceUp';
     if (number < 0) return 'priceDown';
@@ -366,6 +399,7 @@ if(Meteor.isClient) {
     return 'dateNomatch';
   });
 
+  /* First heatmap method
   Handlebars.registerHelper('getHeatColour', function(number) { // Heatmap colour selection - 14 Jan 2015
     if (number >=  4) return 'HeatUp3';
     if (number >=  2) return 'HeatUp2';
@@ -376,19 +410,32 @@ if(Meteor.isClient) {
     if (number <= -1) return 'HeatDn1';
     if (number <   0) return 'HeatDn0';
     return 'HeatFlat';
+  });*/
+
+  Handlebars.registerHelper('getHeatColourStyle', function(number) { // Heatmap colour selection - 14 Jan 2015
+    if (number >=  4) return 'HSUp3';
+    if (number >=  2) return 'HSUp2';
+    if (number >=  1) return 'HSUp1';
+    if (number >   0) return 'HSUp0';
+    if (number <= -4) return 'HSDn3';
+    if (number <= -2) return 'HSDn2';
+    if (number <= -1) return 'HSDn1';
+    if (number <   0) return 'HSDn0';
+    return 'HSFlat';
   });
   
+//  ========================    
     Template.body.events({
-    "submit .new-stock": function (event) {
-    // This function is called when the new stock form is submitted
+//  ========================    
 
-    greet(event); // Record everything from the event - just for learning
+    "submit .new-stock": function (event) {    // Called when the new stock form is submitted
+        greet(event); // Record everything from the event - just for learning
       
-    var text = event.target.text.value;
-    var details = Meteor.call('getStock', text, 0);
+        var text = event.target.text.value;
+        var details = Meteor.call('getStock', text, 0);
 
-    event.target.text.value = ''; // Clear form
-    return false; // Prevent default form submit
+        event.target.text.value = ''; // Clear form
+        return false; // Prevent default form submit
     },
      
     "click .refresh": function () {
@@ -455,8 +502,11 @@ if(Meteor.isClient) {
     } // photo
 
   }); // Template.body.events
+//  ========================    
     
+//  ========================    
     Template.stock.events({
+//  ========================    
     
     "click .delete": function () {
       // Remove this entry if x clicked
@@ -477,35 +527,27 @@ if(Meteor.isClient) {
     }
     
   });
-    
-    Template.stock.helpers({
+//  ========================    
 
-    code: function () { // Formats the stock code
-      var str = this.ticker;
-      return str;
+//  ========================    
+    Template.stock.helpers({
+//  ========================    
+
+    code: function () { // Formats the stock code (removes any index name from the display)
+      var str = this.ticker;      
+      var dotpos = str.indexOf('.');
+      return str.substring(0,dotpos);
     },
 
     last: function () { // Formats last price
- //     var info = this.text;
- //     prices = [];
- //     prices = info.split(",");
- //     var str = prices[1].slice(-7,-1); // Last price as dollars and cents
       return this.last.toFixed(2); // 2 decimal places
     },
     
     chg: function () { // Formats change
-//      var info = this.text;
-//      prices = [];
-//      prices = info.split(",");
-//      var str = prices[2].slice(-7,-1); // Change in dollars and cents
       return this.chg.toFixed(2); // 2 decimal places
     },
     
     chgPC: function () { // Formats change in percent
-//      var info = this.text;
-//      prices = [];
-//      prices = info.split(",");
-//      var str = prices[3].slice(-7,-1); // Change in percent without % sign
       return this.chgpc.toFixed(1); // 1 decimal place
     },
     
@@ -519,21 +561,22 @@ if(Meteor.isClient) {
         return this.Paid; // otherwise return date it's paid
     }
   });
+//  ========================    
     
+//  ========================    
     Template.heatmap.helpers({
+//  ========================    
 
-    code: function () { // Formats the stock code
-      var str = this.ticker;
-      return str;
+    code: function () { // Formats the stock code (removes any index name from the display)
+      var str = this.ticker;      
+      var dotpos = str.indexOf('.');
+      return str.substring(0,dotpos);
     },
     
     chgPC: function () { // Formats change in percent
-//      var info = this.text;
-//      prices = [];
-//      prices = info.split(",");
-//      var str = prices[3].slice(-7,-1); // Change in percent without % sign
-      return this.chgpc.toFixed(1); // 1 decimal place
+      return this.chgpc.toFixed(2); // 2 decimal places in Heatmap
     }
     
   });
+//  ========================    
 }

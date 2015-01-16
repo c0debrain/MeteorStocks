@@ -48,7 +48,9 @@
 <div class="container">
 <header>
 <!--<h1>Stock Monitor</h1>-->Bootstrap 3 with dropdowns, glyphicons and action button. Colour change on values. Async (via callback) remote server calls with CSV parsing.
-Delete, single Update and Refresh enabled. Cordovo included for vibration feedback and GPS location. Camera works now too. Dividends shown. NEW Heatmap<br><br>  
+Delete, single Update and Refresh enabled. Cordovo included for vibration feedback and GPS location. Camera works now too. Dividends shown.
+NEW Heatmap - now with Tooltips. Supports all markets eg IBM.US or TSCO.L - and has better input checking.
+<br><br>  
 <form class="new-stock">
   <input type="text" name="text" placeholder="Stock to add" />
 </form>
@@ -56,14 +58,20 @@ Delete, single Update and Refresh enabled. Cordovo included for vibration feedba
 
 <!--<p id="GPS"></p> this was the pre-template way of doing it -->
 
-<br>{{GPSLocation}}
+{{GPSLocation}}<br>
 
-<!-- font-size of 1px is used to ensure no gaps in table - padding etc don't work -->
+<!--<br>Table based Heatmap - does not work correctly in Chrome<br>
 <table style="max-width: 95%; font-size: 1px; font-family: monospace">{{#each stocks}}{{> heatmap}}
 {{/each}}</table>
+-->
 
+<!-- None-table based Heatmap works in Firefox and Chrome. font-size of 1px is used to ensure minimal gaps - padding etc don't work -->
+<span style="max-width: 95%; font-size: 1px; font-family: monospace">
+{{#each stocks}}{{> heatmap}}
+{{/each}} <!-- auto-wrap breaks if this on the same line as above - whoa! -->
 <br>
-    
+</span>
+
 <table class="table table-striped">
   <thead><tr><th style="text-align:left"><button class="sortStocks">{{StockDir}}</button></th><th>Price</th><th>Change</th><th><button class="sortChange">{{ChangeDir}}</button></th><th></th><th></th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr></thead>
   <tbody>
@@ -82,15 +90,22 @@ Delete, single Update and Refresh enabled. Cordovo included for vibration feedba
 <img id="CordovaImage" width='90%' height='90%'/> <!-- Any photo goes here scaled to fit -->
 
 <div class="footer">
-<p>&copy; 2014 Jon Brown - version 14 Jan 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 16 Jan 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
 </div>
 {{getDateClass XDiv}}
 </div>
 </body>
 
+<!-- ========== METEOR TEMPLATE CODE ========== -->
+
 <template name="heatmap">
-<span class="{{getHeatColour chgPC}}">&nbsp;{{code}}&nbsp;</span>
-</template>
+<!--<span class="{{getHeatColour chgPC}}">&nbsp;{{code}}&nbsp;</span>-->
+<a href="#" class="xtooltip" id="{{getHeatColourStyle chgPC}}">&nbsp;{{code}}&nbsp;<span><img class="xcallout"
+/><strong><center>{{last}}</center></strong><center>{{chgPC}}%</center></span></a></template>
+
+<!-- This Bootstrap tooltip line works on it's own but not inside a Meteor Template
+<a href="#" data-toggle="tooltip" data-placement="top" data-original-title="$75.63 +0.3%">CBA</a>
+-->
 
 <template name="stock">
   <tr>
