@@ -57,6 +57,10 @@ Code snippet is below:
 
 */
 
+//  7 Feb 2015 - Dividends search only for Australuan stocks (and without the .AX)
+//               Heatmap reflects if the stock goes XD or dividend is paid today
+//               Adds a refresh timestamp to trick embedded page images to reload (ie not cache)
+//
 // 16 Jan 2015 - Added Tooltips to Heatmap (could not get Bootstrap ones working due - probably - to CSS conflicts
 //               Trapping N/A returned by Yahoo if stock is not valid)
 //               Added support for non Australian stocks - add .US for US stocks for example eg IBM.US
@@ -217,10 +221,25 @@ if(Meteor.isServer) {
       for (var i in toRefresh)
       {
         var sStock = toRefresh[i].ticker;
-      
+
         var content = result.content;
-      
-        var pStart = content.search(sStock + "&amp;exchange=ASX");
+        
+//      We only lookup dividends for Australian stocks....
+
+        var pstart;
+
+        var aussie = sStock.indexOf(".AX");
+        
+        if (aussie < 0) {
+            greet("Skipping dividend search for " + sStock);
+            pStart = 0;
+        }
+        else
+        {
+            var to_find = sStock.substr(0,aussie);
+            greet("Finding dividend for " + to_find + " (" + sStock + ")");
+            pStart = content.search(to_find + "&amp;exchange=ASX");
+        }
       
         if (pStart > 0)
         {
@@ -246,7 +265,7 @@ if(Meteor.isServer) {
         }
         else
         {
-//        greet("Did not find anything");
+//        greet("Did not find anything - or it's not Australian so we didn't look");
           Stocks.update(toRefresh[i]._id,{
               ticker: toRefresh[i].ticker, last: parseFloat(toRefresh[i].last), chg: parseFloat(toRefresh[i].chg), chgpc: parseFloat(toRefresh[i].chgpc),
               XDiv: "", Paid: "", Franked: "", Percent: "", // Wipe any existing dividend that is not longer relevant
@@ -284,7 +303,9 @@ if(Meteor.isClient) {
 
     Session.set("S-sortStocks",  0);  // Default to sorting by descending (ie largest rises first) so heatmap looks better
     Session.set("S-sortChange", -1);
-            
+
+    Session.set("S-Refresh", new Date()); // Holds timestamp to trick embedded images to reload ie not cache
+    
     Session.set("GPSLat", ""); // Set GPS to
     Session.set("GPSLong", 0); // be off
         
@@ -366,6 +387,14 @@ if(Meteor.isClient) {
         return 'Position is (' + GPSlat.toFixed(4) + ',' + GPSlong.toFixed(4) + ')';      
       }
     },
+
+    REFRESHED: function () { // System friendly format
+      return Session.get("S-Refresh").getTime();
+    },
+
+    REFRESHED_Nice: function () { // Human friendly format
+      return Session.get("S-Refresh");
+    },
     
     stocks: function () {
     // return all the stocks - sorted as we want
@@ -412,7 +441,10 @@ if(Meteor.isClient) {
     return 'HeatFlat';
   });*/
 
-  Handlebars.registerHelper('getHeatColourStyle', function(number) { // Heatmap colour selection - 14 Jan 2015
+  Handlebars.registerHelper('getHeatColourStyle', function(number) { // Heatmap colour selection - 14 Jan 2015    
+    if (isToday(this.XDiv)) return "HSXD";   // Goes XD today
+    if (isToday(this.Paid)) return "HSPaid"; // Dividend paid today
+ 
     if (number >=  4) return 'HSUp3';
     if (number >=  2) return 'HSUp2';
     if (number >=  1) return 'HSUp1';
@@ -421,6 +453,7 @@ if(Meteor.isClient) {
     if (number <= -2) return 'HSDn2';
     if (number <= -1) return 'HSDn1';
     if (number <   0) return 'HSDn0';
+    
     return 'HSFlat';
   });
   
@@ -454,6 +487,8 @@ if(Meteor.isClient) {
       }
       
       Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
+      
+      Session.set("S-Refresh", new Date()); // Forces reload of any embedded images ie stops browser cache
       
     }, // refresh
     
@@ -574,7 +609,7 @@ if(Meteor.isClient) {
     },
     
     chgPC: function () { // Formats change in percent
-      return this.chgpc.toFixed(2); // 2 decimal places in Heatmap
+      return this.chgpc.toFixed(1); // 1 decimal place in Heatmap
     }
     
   });

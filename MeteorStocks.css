@@ -5,7 +5,7 @@
 a.xtooltip {outline:none; color: black }
 a.xtooltip strong {line-height:30px;}
 a.xtooltip:hover {text-decoration:none;}
-a.xtooltip span { z-index:10;display:none; padding:14px 20px; margin-top:20px; margin-left:-20px; width:80px; line-height:16px; }
+a.xtooltip span { z-index:10;display:none; padding:14px 20px; margin-top:20px; margin-left:-20px; width:90px; line-height:16px; }
 a.xtooltip:hover span{ display:inline; position:absolute; border:2px silver; color:black; background:white repeat-x 0 0; }
 .xcallout {z-index:20;position:absolute;border:0;top:-14px;left:120px;}
 /*CSS3 nice shadow */
@@ -179,5 +179,17 @@ table thead tr th { /* JB */
 
 #HSDn3 {
   background-color: red;
+  font-size: large;
+}
+
+/* Style for XD and paid-today in heatmap - 7 Feb 2015 */
+    
+#HSXD {
+  background-color: blue;
+  font-size: large;
+}
+
+#HSPaid {
+  background-color: cyan;
   font-size: large;
 }
