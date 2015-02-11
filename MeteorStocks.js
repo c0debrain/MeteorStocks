@@ -56,7 +56,13 @@ Code snippet is below:
 <td>Triumph Gold Project Update</td>
 
 */
-
+// 11 Feb 2015 - Added indexes support. But cannot get ^DJI to work as per website. I suspect Yahoo traps this one....!
+//               Tried to add a busy indicator to display while server content is loading but no luck. Where is the delay?
+//
+// 10 Feb 2015 - Added GPS 3 second timeout. Any GPS timeout or error now says GPS position not found
+//               Added latest Greet debug message to very bottom of client window
+//               Larger (90% width rather than 50%) embedded graphs
+//
 //  7 Feb 2015 - Dividends search only for Australuan stocks (and without the .AX)
 //               Heatmap reflects if the stock goes XD or dividend is paid today
 //               Adds a refresh timestamp to trick embedded page images to reload (ie not cache)
@@ -77,8 +83,11 @@ Code snippet is below:
 
 // These functions are available on both the client and the server ===========================
 
-var greet = function(name) {
-    console.log(name);
+var greet = function(text) {
+    console.log(text);
+    if(Meteor.isClient) {
+        Session.set("S-Greet", text);
+    }
 }
 
 /*
@@ -115,23 +124,32 @@ if(Meteor.isServer) {
   });
       
   Meteor.methods({
-    getStock: function(stock, id){
+    getStock: function(stock, id) {
       var url = 'http://finance.yahoo.com/d/quotes?s=';
       var format = '&f=sl1c1p2'; // Values from Yahoo in CSV format
 
-//    greet("\nWas " + stock);      
-      stock = stock.replace(/[^A-Za-z0-9\.]/g, ''); // Allow only letters, numbers and dot in input
-//    greet("Now " + stock);
-
-      if (stock.indexOf('.') < 0)
+      greet("\nWas " + stock);
+      
+      if (stock.indexOf('^') == 0) // If it's an index (eg ^FTSE, ^AXJO) then deal with that...
       {
-        stock += '.AX'; // Make this an Australian stock if no index is provided ie no .XX. So IBM needs to be IBM.US for example
-      }
-
-      if (stock.indexOf('.') == 0) // After removing garbage the input may be nothing so will be .AX by now
+        stock = stock.replace(/[^A-Za-z]/g, ''); // Allow only letters in input
+        stock = '^' + stock; // But does not work for ^DJI - Yahoo bug?!
+        greet("Now index " + stock);
+      } else // It's an actual stock
       {
-        greet("\nNo valid input for Yahoo");
-        return;
+        stock = stock.replace(/[^A-Za-z0-9\.]/g, ''); // Allow only letters, numbers and dot in input
+        greet("Now stock " + stock);
+
+        if (stock.indexOf('.') < 0)
+        {
+          stock += '.AX'; // Make this an Australian stock if no index is provided ie no .XX. So IBM needs to be IBM.US for example
+        }
+
+        if (stock.indexOf('.') == 0) // After removing garbage the input may be nothing so will be .AX by now
+        {
+          greet("\nNo valid input for Yahoo");
+          return;
+        }
       }
       url += stock;
       url += format;
@@ -150,6 +168,12 @@ if(Meteor.isServer) {
         
         var res = content.split(",");
         
+        if (res.length < 4)
+        {
+            greet("Some strange result from Yahoo - leaving now...");
+            return;
+        }
+                
         var ticker = res[0];
         var last   = res[1];
         var chg    = res[2];
@@ -208,7 +232,7 @@ if(Meteor.isServer) {
             });        
         }
       }); // Callback
-      return true;
+      return;
     }, //getStock
 
     getDividends: function(){
@@ -283,7 +307,7 @@ if(Meteor.isServer) {
       Stocks.remove(id);
     }, // deleteStock
     
-    KillStock: function(){
+    KillStock: function(){ // Only for testing!!
       greet("\nKilling all stocks!");
       var toKill = Stocks.find({}, {reactive: false}).fetch();
       for (var i in toKill)
@@ -306,9 +330,11 @@ if(Meteor.isClient) {
 
     Session.set("S-Refresh", new Date()); // Holds timestamp to trick embedded images to reload ie not cache
     
+    Session.set("S-busy", 1);  // On startup assume we're busy
+        
     Session.set("GPSLat", ""); // Set GPS to
     Session.set("GPSLong", 0); // be off
-        
+    
     var onGPSSuccess = function(position) {
     /*
     greet('Latitude: '          + position.coords.latitude          + '\n' +
@@ -347,8 +373,10 @@ if(Meteor.isClient) {
 
     function onGPSError(error) {
         greet('GPS error ' + error.code + '(' + error.message + ')');
-        var element = document.getElementById('GPS');
-        element.innerHTML = ''; // No GPS details   
+        Session.set("GPSLat", "GPS position not available");
+        Session.set("GPSLong", 0);
+//        var element = document.getElementById('GPS');
+//        element.innerHTML = ''; // No GPS details   
     };
     
     function onCameraSuccess(imageData) {
@@ -362,7 +390,7 @@ if(Meteor.isClient) {
     };
     
     Meteor.subscribe("stocks");
-    
+        
 //  ========================    
     Template.body.helpers({
 //  ========================    
@@ -395,14 +423,34 @@ if(Meteor.isClient) {
     REFRESHED_Nice: function () { // Human friendly format
       return Session.get("S-Refresh");
     },
+
+    GreetDebug: function () { // Last Greet msg goes to device - not just console
+      return Session.get("S-Greet");
+    },
+    
+    BusySymbol: function () { // Show a busy graphic if we are - UNUSED AT THE MOMENT
+        /*
+        greet("Busy");
+        Session.set("S-busy", 1); // Busy now
+        Session.set("S-busy", 0); // Not busy now
+        greet("Not Busy");
+    
+      if (Session.get("S-busy") == 0) {
+        return "";
+      } else {
+        return "BUSY!!!!";
+      }
+      */
+    },
     
     stocks: function () {
     // return all the stocks - sorted as we want
     // To sort by date: {sort: {createdAt: -1}});
+    
       if (Session.get("S-sortStocks") != 0) {
-          return Stocks.find({}, {sort: {ticker: Session.get("S-sortStocks")}}); // Display items sorted by Stock
+        return Stocks.find({}, {sort: {ticker: Session.get("S-sortStocks")}}); // Display items sorted by Stock
       } else {
-          return Stocks.find({}, {sort: {chgpc: Session.get("S-sortChange")}}); // Display items sorted by last changed percent
+        return Stocks.find({}, {sort: {chgpc: Session.get("S-sortChange")}}); // Display items sorted by last changed percent
       }
     }
   });
@@ -461,12 +509,16 @@ if(Meteor.isClient) {
     Template.body.events({
 //  ========================    
 
-    "submit .new-stock": function (event) {    // Called when the new stock form is submitted
-        greet(event); // Record everything from the event - just for learning
+    "submit .new-stock": function (event) { // Called when the new stock form is submitted
+//      greet("Submit");
+//      greet(event); // Was in for learning but seems to crash Meteor!
       
         var text = event.target.text.value;
-        var details = Meteor.call('getStock', text, 0);
-
+        
+//        greet("Submit text is " + text);
+        
+        Meteor.call('getStock', text, 0);
+//        greet("getStock returned");
         event.target.text.value = ''; // Clear form
         return false; // Prevent default form submit
     },
@@ -483,7 +535,7 @@ if(Meteor.isClient) {
       {
         var str = toRefresh[i].ticker;
         greet("Refreshing "+str+" at "+toRefresh[i]._id);
-        var details = Meteor.call('getStock', str, toRefresh[i]._id);
+        Meteor.call('getStock', str, toRefresh[i]._id);
       }
       
       Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
@@ -519,8 +571,10 @@ if(Meteor.isClient) {
     "click .location": function () {
       // Refreshes GPS location
       if (Meteor.isCordova) {
+        Session.set("GPSLat", "Finding position...");
+        Session.set("GPSLong", 0);
         navigator.vibrate(50); // Vibrate handset
-        navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError); // Update GPS position        
+        navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, { timeout: 3000 }); // Update GPS position - max wait 3 secs        
       } else {
         Session.set("GPSLat", "No GPS installed");
         Session.set("GPSLong", 0);
@@ -552,13 +606,13 @@ if(Meteor.isClient) {
     },
 
     "click .update": function () {
-      // Update the values for this item when ? is clicked
+      // Update the values for this item when ticker is clicked
       var stock = this.ticker;
       greet("Updating "+stock);
       if (Meteor.isCordova) {
         navigator.vibrate(50); // Vibrate handset briefly
       }
-      var details = Meteor.call('getStock', stock, this._id);
+      Meteor.call('getStock', stock, this._id);
     }
     
   });
@@ -605,7 +659,7 @@ if(Meteor.isClient) {
     code: function () { // Formats the stock code (removes any index name from the display)
       var str = this.ticker;      
       var dotpos = str.indexOf('.');
-      return str.substring(0,dotpos);
+      return str.substring(0,dotpos); // Perhaps could change to not return anything for heatmap it it's an index (^) or from overseas (ie not .AX)?
     },
     
     chgPC: function () { // Formats change in percent

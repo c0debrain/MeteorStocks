@@ -185,11 +185,15 @@ table thead tr th { /* JB */
 /* Style for XD and paid-today in heatmap - 7 Feb 2015 */
     
 #HSXD {
-  background-color: blue;
+  background-color: lightblue;
+  color: darkblue;
+/*  font-weight: bold; */
   font-size: large;
 }
 
 #HSPaid {
-  background-color: cyan;
+  background-color: gold;
+  color: darkblue;
+/*  font-weight: bold; */
   font-size: large;
 }

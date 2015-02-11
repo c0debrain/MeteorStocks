@@ -55,8 +55,9 @@ Cordovo included for vibration feedback and GPS location.
 Camera works now too.
 NEW Heatmap - now with Tooltips.
 Supports all markets eg IBM.US or TSCO.L - and has better input checking.
-Dividends for Australian stocks.
-<br><br>  
+Dividends for Australian stocks. GPS timeout.
+Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500).
+<br><br>
 <form class="new-stock">
   <input type="text" name="text" placeholder="Stock to add" />
 </form>
@@ -64,6 +65,7 @@ Dividends for Australian stocks.
 
 <!--<p id="GPS"></p> this was the pre-template way of doing it -->
 
+{{BusySymbol}}
 {{GPSLocation}}<br>
 
 <!--<br>Table based Heatmap - does not work correctly in Chrome<br>
@@ -87,18 +89,19 @@ Dividends for Australian stocks.
   </tbody>
 </table>
 
-<IMG width=50% SRC="http://www.asx.com.au/asx/widget/chart.do?asxCode=XJO&type=INDEX&{{REFRESHED}}" alt="<XJO Chart>"/><br><br>
+<IMG width=90% SRC="http://www.asx.com.au/asx/widget/chart.do?asxCode=XJO&type=INDEX&{{REFRESHED}}" alt="<XJO Chart>"/><br><br>
 
-<IMG width=50% SRC="https://chart.finance.yahoo.com/z?s=^DJI&t=1d&{{REFRESHED}}" alt="<Dow Chart>"/><br>
+<IMG width=90% SRC="https://chart.finance.yahoo.com/z?s=^DJI&t=1d&{{REFRESHED}}" alt="<Dow Chart>"/><br>
 
-<IMG width=50% SRC="https://chart.finance.yahoo.com/t?s=AUDUSD=X&{{REFRESHED}}" alt="<Gold Chart>"/><br><br>
+<IMG width=90% SRC="https://chart.finance.yahoo.com/t?s=AUDUSD=X&{{REFRESHED}}" alt="<Gold Chart>"/><br><br>
 
 <img id="CordovaImage" width='90%' height='90%'/> <!-- Any photo goes here scaled to fit -->
 
 <div class="footer">
-<p>&copy; 2014 Jon Brown - version 7 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 10 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
 </div>
-{{getDateClass XDiv}} - {{REFRESHED_Nice}}
+{{REFRESHED_Nice}}<br>
+[{{GreetDebug}}]
 </div>
 </body>
 
@@ -123,7 +126,7 @@ Dividends for Australian stocks.
   <td><button class="delete"><span class="glyphicon glyphicon-remove"></span></button></td> <!-- Added a delete option 3 Dec 2014, added glyph 12 Dec 2014 instead of &times; -->
 <!-- Unused technique:
 <td><span class="unchanged" style="color:{{getSignColour chg}}">{{chg}}</span></td> -->
-<td><span class="">{{dXDiv}}</span></td><!-- 18 Dec 2014 - added dividend details -->
+<td><span class="{{getDateClass XDiv}} ">{{dXDiv}}</span></td><!-- 18 Dec 2014 - added dividend details -->
 <td><span class="{{getDateClass Paid}}">{{dPaid}}</span></td>
 <td>{{Franked}}</td>
 <td>{{Percent}}</td>
