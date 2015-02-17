@@ -56,6 +56,8 @@ Code snippet is below:
 <td>Triumph Gold Project Update</td>
 
 */
+// 17 Feb 2015 - Added a busy indicator that runs on startup. Also moved code inside startup()
+//
 // 11 Feb 2015 - Added indexes support. But cannot get ^DJI to work as per website. I suspect Yahoo traps this one....!
 //               Tried to add a busy indicator to display while server content is loading but no luck. Where is the delay?
 //
@@ -318,24 +320,30 @@ if(Meteor.isServer) {
       }
     } // KillStock
   });
-}
+} // isServer
 
 // Everything in here is only run on the client ==============================================
 
 if(Meteor.isClient) {
-    greet("Client is alive");
-
-    Session.set("S-sortStocks",  0);  // Default to sorting by descending (ie largest rises first) so heatmap looks better
-    Session.set("S-sortChange", -1);
-
-    Session.set("S-Refresh", new Date()); // Holds timestamp to trick embedded images to reload ie not cache
+    Session.set("S-busy", 'Y');  // On startup assume we're busy
     
-    Session.set("S-busy", 1);  // On startup assume we're busy
-        
-    Session.set("GPSLat", ""); // Set GPS to
-    Session.set("GPSLong", 0); // be off
+    Meteor.subscribe("stocks", function() {
+        Session.set("S-busy", 'N'); // Assume we're not busy now    
+    });
     
-    var onGPSSuccess = function(position) {
+    Meteor.startup(function () {
+        greet("Client is alive");
+
+        Session.set("S-sortStocks",  0);  // Default to sorting by descending (ie largest rises first) so heatmap looks better
+        Session.set("S-sortChange", -1);
+
+        Session.set("S-Refresh", new Date()); // Holds timestamp to trick embedded images to reload ie not cache
+    
+        Session.set("S-GPSLat", ""); // Set GPS to
+        Session.set("S-GPSLong", 0); // be off
+    }); // Client startup
+    
+    function onGPSSuccess(position) {
     /*
     greet('Latitude: '          + position.coords.latitude          + '\n' +
           'Longitude: '         + position.coords.longitude         + '\n' +
@@ -346,20 +354,21 @@ if(Meteor.isClient) {
           'Speed: '             + position.coords.speed             + '\n' +
           'Timestamp: '         + position.timestamp                + '\n');
     */
-    GPSlat  = position.coords.latitude;
-    GPSlong = position.coords.longitude;
-    GPSacc  = position.coords.accuracy;
-    greet('Found at (' + GPSlat + ',' + GPSlong + ') with accuracy of ' + GPSacc);
-    if (GPSacc > 5000)
-    {
-        GPSlat  = "GPS is too weak";
-        GPSlong = 0;
-        greet('Weak GPS');
-    }
-    Session.set("GPSLat", GPSlat);
-    Session.set("GPSLong", GPSlong);
 
-/* The pre-template way of doing it....
+        GPSlat  = position.coords.latitude;
+        GPSlong = position.coords.longitude;
+        GPSacc  = position.coords.accuracy;
+        greet('Found at (' + GPSlat + ',' + GPSlong + ') with accuracy of ' + GPSacc);
+        if (GPSacc > 5000)
+        {
+            GPSlat  = "GPS is too weak";
+            GPSlong = 0;
+            greet('Weak GPS');
+        }
+        Session.set("S-GPSLat", GPSlat);
+        Session.set("S-GPSLong", GPSlong);
+
+/*      The pre-template way of doing it....
         var element = document.getElementById('GPS');
         if (GPSacc > 5000)
         {
@@ -368,13 +377,13 @@ if(Meteor.isClient) {
         {
             element.innerHTML = 'Recently at ('  + GPSlat.toFixed(4) + ',' + GPSlong.toFixed(4) + ')';                            
         }
-*/
-    };
+*/    
+    }; // onGPSSuccess
 
     function onGPSError(error) {
         greet('GPS error ' + error.code + '(' + error.message + ')');
-        Session.set("GPSLat", "GPS position not available");
-        Session.set("GPSLong", 0);
+        Session.set("S-GPSLat", "GPS position not available");
+        Session.set("S-GPSLong", 0);
 //        var element = document.getElementById('GPS');
 //        element.innerHTML = ''; // No GPS details   
     };
@@ -388,8 +397,6 @@ if(Meteor.isClient) {
     function onCameraFail(message) {
         greet('Camera error ' + message);
     };
-    
-    Meteor.subscribe("stocks");
         
 //  ========================    
     Template.body.helpers({
@@ -406,9 +413,11 @@ if(Meteor.isClient) {
         return "%"; // No particular sort order
     },
     
-    GPSLocation: function () {
-      GPSlat = Session.get("GPSLat");
-      GPSlong= Session.get("GPSLong");
+    GPSLocation: function () {  
+      if (!Session.get("S-GPSLat")) return ''; // Starting up
+              
+      GPSlat = Session.get("S-GPSLat");
+      GPSlong= Session.get("S-GPSLong");
       if (GPSlong == 0) {
         return GPSlat; // No valid GPS so GPSlat has the reason
       } else {
@@ -417,10 +426,12 @@ if(Meteor.isClient) {
     },
 
     REFRESHED: function () { // System friendly format
+      if (!Session.get("S-Refresh")) return 'Starting up nicely'; // Starting up
       return Session.get("S-Refresh").getTime();
     },
 
     REFRESHED_Nice: function () { // Human friendly format
+      if (!Session.get("S-Refresh")) return "Starting up now"; // Starting up
       return Session.get("S-Refresh");
     },
 
@@ -428,19 +439,14 @@ if(Meteor.isClient) {
       return Session.get("S-Greet");
     },
     
-    BusySymbol: function () { // Show a busy graphic if we are - UNUSED AT THE MOMENT
-        /*
-        greet("Busy");
-        Session.set("S-busy", 1); // Busy now
-        Session.set("S-busy", 0); // Not busy now
-        greet("Not Busy");
-    
-      if (Session.get("S-busy") == 0) {
-        return "";
-      } else {
-        return "BUSY!!!!";
-      }
-      */
+    BusySymbol: function () { // Show a busy graphic if we are
+        if (!Session.get("S-busy")) return "busy.gif"; // Starting up...
+        
+        if (Session.get("S-busy") != 'N') {
+            return "busy.gif"; // "Loading data...";
+        } else {
+          return "ok.gif"; // Session.get("S-busy");
+        }
     },
     
     stocks: function () {
@@ -571,13 +577,13 @@ if(Meteor.isClient) {
     "click .location": function () {
       // Refreshes GPS location
       if (Meteor.isCordova) {
-        Session.set("GPSLat", "Finding position...");
-        Session.set("GPSLong", 0);
+        Session.set("S-GPSLat", "Finding position...");
+        Session.set("S-GPSLong", 0);
         navigator.vibrate(50); // Vibrate handset
         navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, { timeout: 3000 }); // Update GPS position - max wait 3 secs        
       } else {
-        Session.set("GPSLat", "No GPS installed");
-        Session.set("GPSLong", 0);
+        Session.set("S-GPSLat", "No GPS installed");
+        Session.set("S-GPSLong", 0);
       }
     }, // location
     
@@ -668,4 +674,4 @@ if(Meteor.isClient) {
     
   });
 //  ========================    
-}
+} //is Client

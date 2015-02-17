@@ -47,7 +47,7 @@
       
 <div class="container">
 <header>
-<!--<h1>Stock Monitor</h1>-->Bootstrap 3 with dropdowns, glyphicons and action button.
+Bootstrap 3 with dropdowns, glyphicons and action button.
 Colour change on values.
 Async (via callback) remote server calls with CSV parsing.
 Delete, single Update and Refresh enabled.
@@ -56,16 +56,15 @@ Camera works now too.
 NEW Heatmap - now with Tooltips.
 Supports all markets eg IBM.US or TSCO.L - and has better input checking.
 Dividends for Australian stocks. GPS timeout.
-Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500).
+Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500). Busy graphic while loading data.
 <br><br>
 <form class="new-stock">
-  <input type="text" name="text" placeholder="Stock to add" />
+  <input type="text" name="text" placeholder="Stock to add" /><img src='{{BusySymbol}}'>
 </form>
 </header>
 
 <!--<p id="GPS"></p> this was the pre-template way of doing it -->
 
-{{BusySymbol}}
 {{GPSLocation}}<br>
 
 <!--<br>Table based Heatmap - does not work correctly in Chrome<br>
@@ -98,7 +97,7 @@ Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500).
 <img id="CordovaImage" width='90%' height='90%'/> <!-- Any photo goes here scaled to fit -->
 
 <div class="footer">
-<p>&copy; 2014 Jon Brown - version 10 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 17 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
 </div>
 {{REFRESHED_Nice}}<br>
 [{{GreetDebug}}]
