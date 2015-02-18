@@ -18,6 +18,7 @@
 //
 // Used packages:       $ meteor list
 //
+//                      iron-router                                     Enables multiple pages eg About etc
 //                      cordova:org.apache.cordova.vibration    0.3.12
 //                      cordova:org.apache.cordova.geolocation  0.3.11
 //                      cordova:org.apache.cordova.camera       0.3.4
@@ -56,6 +57,8 @@ Code snippet is below:
 <td>Triumph Gold Project Update</td>
 
 */
+// 18 Feb 2015 - Uses Iron Router now :-) Included About, Help and Services pages
+//
 // 17 Feb 2015 - Added a busy indicator that runs on startup. Also moved code inside startup()
 //
 // 11 Feb 2015 - Added indexes support. But cannot get ^DJI to work as per website. I suspect Yahoo traps this one....!
@@ -84,6 +87,29 @@ Code snippet is below:
 // 18 Dec 2014 - Added dividend information
 
 // These functions are available on both the client and the server ===========================
+
+/*
+var server_busy = false;
+
+function set_server_busy() {
+    server_busy = true;
+    greet("Server busy");
+}
+
+function set_server_idle() {
+    server_busy = false;
+    greet("Server idle");
+}
+
+function get_server_busy() {
+    if (server_busy) {
+        greet("Server queried : Busy");
+    } else {
+        greet("Server queried : Idle");
+    }
+    return server_busy;
+}
+*/
 
 var greet = function(text) {
     console.log(text);
@@ -247,7 +273,7 @@ if(Meteor.isServer) {
       for (var i in toRefresh)
       {
         var sStock = toRefresh[i].ticker;
-
+              //greet("Doing " + sStock + " = " + i);
         var content = result.content;
         
 //      We only lookup dividends for Australian stocks....
@@ -325,9 +351,10 @@ if(Meteor.isServer) {
 // Everything in here is only run on the client ==============================================
 
 if(Meteor.isClient) {
-    Session.set("S-busy", 'Y');  // On startup assume we're busy
+    Session.set("S-busy", 'Y'); // On startup assume we're busy
     
     Meteor.subscribe("stocks", function() {
+//      Callback...
         Session.set("S-busy", 'N'); // Assume we're not busy now    
     });
     
@@ -341,6 +368,8 @@ if(Meteor.isClient) {
     
         Session.set("S-GPSLat", ""); // Set GPS to
         Session.set("S-GPSLong", 0); // be off
+        
+        Session.set("S-camera", '');
     }); // Client startup
     
     function onGPSSuccess(position) {
@@ -399,7 +428,7 @@ if(Meteor.isClient) {
     };
         
 //  ========================    
-    Template.body.helpers({
+    Template.home.helpers({
 //  ========================    
     
     StockDir: function () { // Format header depending on sort order
@@ -425,6 +454,10 @@ if(Meteor.isClient) {
       }
     },
 
+    Camera: function () {  
+      return Session.get("S-camera");
+    },
+    
     REFRESHED: function () { // System friendly format
       if (!Session.get("S-Refresh")) return 'Starting up nicely'; // Starting up
       return Session.get("S-Refresh").getTime();
@@ -443,7 +476,7 @@ if(Meteor.isClient) {
         if (!Session.get("S-busy")) return "busy.gif"; // Starting up...
         
         if (Session.get("S-busy") != 'N') {
-            return "busy.gif"; // "Loading data...";
+          return "busy.gif"; // "Loading data...";
         } else {
           return "ok.gif"; // Session.get("S-busy");
         }
@@ -512,7 +545,7 @@ if(Meteor.isClient) {
   });
   
 //  ========================    
-    Template.body.events({
+    Template.home.events({
 //  ========================    
 
     "submit .new-stock": function (event) { // Called when the new stock form is submitted
@@ -525,17 +558,19 @@ if(Meteor.isClient) {
         
         Meteor.call('getStock', text, 0);
 //        greet("getStock returned");
+
         event.target.text.value = ''; // Clear form
         return false; // Prevent default form submit
     },
      
     "click .refresh": function () {
       // Forces all the stocks to be refreshed
+          
       if (Meteor.isCordova) {
         navigator.vibrate(200); // Vibrate handset
         greet("Bzzzzz");      
       }
-            
+    
       var toRefresh = Stocks.find({}, {reactive: false}).fetch();
       for (var i in toRefresh)
       {
@@ -545,11 +580,36 @@ if(Meteor.isClient) {
       }
       
       Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
-      
+    
       Session.set("S-Refresh", new Date()); // Forces reload of any embedded images ie stops browser cache
       
     }, // refresh
     
+    "click .location": function () {
+      // Refreshes GPS location
+      if (Meteor.isCordova) {
+        Session.set("S-GPSLat", "Finding position...");
+        Session.set("S-GPSLong", 0);
+        navigator.vibrate(50); // Vibrate handset
+        navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, { timeout: 3000 }); // Update GPS position - max wait 3 secs        
+      } else {
+        Session.set("S-GPSLat", "No GPS device");
+        Session.set("S-GPSLong", 0);
+      }
+    }, // location
+
+    "click .camera": function () {
+      // Takes a photo
+      if (Meteor.isCordova) {
+        navigator.camera.getPicture(onCameraSuccess, onCameraFail, { quality: 50,
+        destinationType: Camera.DestinationType.DATA_URL
+        });
+      } else {
+        greet("No camera"); // One day this might use the webcam for laptops etc
+        Session.set("S-camera", "No Camera available");
+      }
+    }, // camera
+
     "click .sortStocks": function () {
       // Sort result by Stock name
       var sorting = Session.get("S-sortStocks");
@@ -572,31 +632,18 @@ if(Meteor.isClient) {
         Session.set("S-sortChange", 1); // Now ascending order
         Session.set("S-sortStocks", 0);
       }    
-    }, // sortChange
-    
-    "click .location": function () {
-      // Refreshes GPS location
-      if (Meteor.isCordova) {
-        Session.set("S-GPSLat", "Finding position...");
-        Session.set("S-GPSLong", 0);
-        navigator.vibrate(50); // Vibrate handset
-        navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, { timeout: 3000 }); // Update GPS position - max wait 3 secs        
-      } else {
-        Session.set("S-GPSLat", "No GPS installed");
-        Session.set("S-GPSLong", 0);
-      }
-    }, // location
-    
-    "click .camera": function () {
-      // Takes a photo
-      if (Meteor.isCordova) {
-        navigator.camera.getPicture(onCameraSuccess, onCameraFail, { quality: 50,
-        destinationType: Camera.DestinationType.DATA_URL
-        });
-      }
-    } // photo
+    } // sortChange
+        
+  }); // Template.home.events
+
+//  ========================    
+    Template.body.events({
+//  ========================    
+        
+//  NONE!!!
 
   }); // Template.body.events
+  
 //  ========================    
     
 //  ========================    

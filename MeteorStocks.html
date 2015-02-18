@@ -9,6 +9,12 @@
 <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.1/js/bootstrap.min.js"></script>-->
 </head>
 <body>
+{{> yield}}
+</body>
+
+<!-- ========== METEOR TEMPLATE CODE ========== -->
+
+<template name="nav">
     <!--glyphicons: http://getbootstrap.com/components -->
     <div class="container">     
     <!-- Static navbar -->
@@ -21,66 +27,67 @@
               <span class="icon-bar"></span>
               <span class="icon-bar"></span> <!-- 3 bar graphic for menus on mobile -->
             </button>
-          <a class="navbar-brand" href="#">Meteor Stocks</a>
+          <a class="navbar-brand" href="{{pathFor 'home'}}">Meteor Stocks</a>
         </div>
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
-            <li><a href="#"><span class="badge"><button class="refresh">Refresh <span class="glyphicon glyphicon-refresh"></span></button></span></a></li>
-            <li><a href="#"><span class="badge"><button class="location">Location <span class="glyphicon glyphicon-signal"></span></button></span></a></li>
+            <li><a href="{{pathFor 'services'}}"><span class="badge">Services <span class="glyphicon glyphicon-paperclip"></span></span></a></li>
             <li class="dropdown">
-              <a href="#" class="dropdown-toggle" data-toggle="dropdown">More... <span class="caret"></span></a>
-              <ul class="dropdown-menu" role="menu">
-                <li><a href="#">Services <span class="glyphicon glyphicon-paperclip"></span></a></li>
-                <li class="divider"></li>
-                <li class="dropdown-header">Details</li>
-                <li><a href="#"><button class="camera">About Us <span class="glyphicon glyphicon-info-sign"></span></button></a></li>
-                <li><a href="#"><button class="camera">Camera <span class="glyphicon glyphicon-camera"></span></button></a></li>
-                <li class="divider"></li>
-                <li><a href="#">Help <span class="glyphicon glyphicon-question-sign"></span></a></li>
-              </ul>
+            <a href="#" class="dropdown-toggle" data-toggle="dropdown">More... <span class="caret"></span></a>
+                <ul class="dropdown-menu" role="menu">
+                    <li><a href="{{pathFor 'about'}}">About Us <span class="glyphicon glyphicon-info-sign"></span></a></li>
+                    <li class="divider"></li>
+                    <li class="dropdown-header">Details</li>
+                    <li><a href="{{pathFor 'help'}}">Help <span class="glyphicon glyphicon-question-sign"></span></a></li>
+                    <li class="divider"></li>
+                    <li><a href="#">&copy; MMXIV Jon Brown</a></li>
+                </ul>
             </li>
           </ul>
         </div><!--/.nav-collapse -->
       </div><!-- container-fluid -->
     </div><!-- navbar -->
-  </div> <!-- container -->
-      
+  </div><!-- container -->
+</template>
+
+<template name="footer">
+<div class="footer"><hr/>
+<p>&copy; 2014 Jon Brown - version 18 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
+</div> <!-- footer -->
+</template>
+
+<template name="home">
+{{> nav}}  
 <div class="container">
+<h3>Welcome
+<button class="refresh"><span class="glyphicon glyphicon-refresh"></span></button>
+<button class="location"><span class="glyphicon glyphicon-map-marker"></span></button>
+<button class="camera"><span class="glyphicon glyphicon-camera"></span></button>
+</h3>
 <header>
-Bootstrap 3 with dropdowns, glyphicons and action button.
-Colour change on values.
-Async (via callback) remote server calls with CSV parsing.
-Delete, single Update and Refresh enabled.
-Cordovo included for vibration feedback and GPS location.
-Camera works now too.
-NEW Heatmap - now with Tooltips.
-Supports all markets eg IBM.US or TSCO.L - and has better input checking.
-Dividends for Australian stocks. GPS timeout.
-Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500). Busy graphic while loading data.
-<br><br>
 <form class="new-stock">
-  <input type="text" name="text" placeholder="Stock to add" /><img src='{{BusySymbol}}'>
+<input type="text" name="text" placeholder="&nbsp;Stock to add" /><img src='{{BusySymbol}}'>
 </form>
 </header>
 
-<!--<p id="GPS"></p> this was the pre-template way of doing it -->
-
-{{GPSLocation}}<br>
+{{GPSLocation}} {{Camera}}<br>
 
 <!--<br>Table based Heatmap - does not work correctly in Chrome<br>
 <table style="max-width: 95%; font-size: 1px; font-family: monospace">{{#each stocks}}{{> heatmap}}
 {{/each}}</table>
--->
+None-table based Heatmap works in Firefox and Chrome. font-size of 1px is used to ensure minimal gaps - padding etc don't work -->
 
-<!-- None-table based Heatmap works in Firefox and Chrome. font-size of 1px is used to ensure minimal gaps - padding etc don't work -->
 <span style="max-width: 95%; font-size: 1px; font-family: monospace">
 {{#each stocks}}{{> heatmap}}
 {{/each}} <!-- auto-wrap breaks if this on the same line as above - whoa! -->
 <br>
 </span>
+<br>
 
 <table class="table table-striped">
-  <thead><tr><th style="text-align:left"><button class="sortStocks">{{StockDir}}</button></th><th>Price</th><th>Change</th><th><button class="sortChange">{{ChangeDir}}</button></th><th></th><th></th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th><th>&nbsp;</th></tr></thead>
+  <thead><tr><th style="text-align:left"><button class="sortStocks">{{StockDir}}</button></th>
+  <th>Price</th><th>Change</th><th><button class="sortChange">{{ChangeDir}}</button></th>
+  <th></th></tr></thead>
   <tbody>
   {{#each stocks}}
   {{> stock}}
@@ -95,16 +102,62 @@ Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500). Busy graphic while loadin
 <IMG width=90% SRC="https://chart.finance.yahoo.com/t?s=AUDUSD=X&{{REFRESHED}}" alt="<Gold Chart>"/><br><br>
 
 <img id="CordovaImage" width='90%' height='90%'/> <!-- Any photo goes here scaled to fit -->
-
-<div class="footer">
-<p>&copy; 2014 Jon Brown - version 17 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
-</div>
+{{> footer}}
 {{REFRESHED_Nice}}<br>
 [{{GreetDebug}}]
-</div>
-</body>
+</div> <!-- container -->
+</template>
 
-<!-- ========== METEOR TEMPLATE CODE ========== -->
+<template name="about">
+{{> nav}}  
+<div class="container">
+<h3>About Us</h3>
+<br>
+Progress to date includes:<br><br>
+<ul>
+<li>Bootstrap 3 with dropdowns, glyphicons and action button</li>
+<li>Colour change on values</li>
+<li>Async (via callback) remote server calls with CSV parsing</li>
+<li>Delete, single Update and Refresh enabled</li>
+<li>Cordovo included for vibration feedback and GPS location</li>
+<li>Camera works now too</li>
+<li>New Heatmap - now with Tooltips</li>
+<li>Supports all markets eg IBM.US or TSCO.L - and has better input checking</li>
+<li>Dividends for Australian stocks</li>
+<li>GPS timeout</li>
+<li>Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500)</li>
+<li>Busy graphic while loading data</li>
+<li>Now includes Iron-Router</li>
+</ul>
+{{> footer}}
+</div> <!-- container -->
+</template>
+
+<template name="help">
+{{> nav}}  
+<div class="container">
+<h3>Help</h3>
+<br>
+Really? You need help with this? Perhaps try some of these ideas....<br><br>
+<ul>
+<li>Try adding a stock like CBA or IBM.US</li>
+<li>Use 'Location' to see your GPS position</li>
+<li>Give the Camera option a go</li>
+</ul>
+{{> footer}}
+</div> <!-- container -->
+</template>
+
+<template name="services">
+{{> nav}}  
+<div class="container">
+<h3>Services</h3>
+<br>
+We're busy building some...
+<img src="busy-rainbow.gif">
+{{> footer}}
+</div> <!-- container -->
+</template>
 
 <template name="heatmap">
 <!--<span class="{{getHeatColour chgPC}}">&nbsp;{{code}}&nbsp;</span>-->
@@ -117,17 +170,10 @@ Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500). Busy graphic while loadin
 
 <template name="stock">
   <tr>
-  <td style="text-align:left"><button class="update">{{code}}</button></td> <!-- 12 Dec 2014 - added ability to update by clicking the stock code -->
-  <td>{{last}}</td>
-  <td><span class="{{getSignColour chg}}">{{chg}}</span></td>
-  <td><span class="{{getSignClass chgPC}}">{{chgPC}}</span></td>
-  <td><!--<button class="update"><span class="glyphicon glyphicon-repeat"></span></button> UNUSED --></td> <!-- Added an update option 3 Dec 2014, added glyph 12 Dec 2014 -->
-  <td><button class="delete"><span class="glyphicon glyphicon-remove"></span></button></td> <!-- Added a delete option 3 Dec 2014, added glyph 12 Dec 2014 instead of &times; -->
-<!-- Unused technique:
-<td><span class="unchanged" style="color:{{getSignColour chg}}">{{chg}}</span></td> -->
-<td><span class="{{getDateClass XDiv}} ">{{dXDiv}}</span></td><!-- 18 Dec 2014 - added dividend details -->
-<td><span class="{{getDateClass Paid}}">{{dPaid}}</span></td>
-<td>{{Franked}}</td>
-<td>{{Percent}}</td>
+  <td style="text-align:left"><button class="update">{{code}}</button><br><span class="{{getDateClass XDiv}} ">{{dXDiv}}</span></td>
+  <td>{{last}}<br><span class="{{getDateClass Paid}} ">{{dPaid}}</span></td>
+  <td><span class="{{getSignColour chg}}">{{chg}}</span><br>{{Franked}}</td>
+  <td><span class="{{getSignClass chgPC}}">{{chgPC}}</span><br>{{Percent}}</td>
+  <td><button class="delete"><span class="glyphicon glyphicon-remove"></span></button></td>
   </tr>
 </template>
