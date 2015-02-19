@@ -18,7 +18,7 @@
 //
 // Used packages:       $ meteor list
 //
-//                      iron-router                                     Enables multiple pages eg About etc
+//                      iron-router                             1.0.7   Enables multiple pages eg About etc
 //                      cordova:org.apache.cordova.vibration    0.3.12
 //                      cordova:org.apache.cordova.geolocation  0.3.11
 //                      cordova:org.apache.cordova.camera       0.3.4
@@ -32,9 +32,7 @@
 
 /*
 
-Idea for price sensitive details:
-
-URL:
+Idea for price sensitive details from:
 
 http://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode=&timeframe=R&dateReleased=22%2F12%2F2014
 
@@ -57,6 +55,10 @@ Code snippet is below:
 <td>Triumph Gold Project Update</td>
 
 */
+// 19 Feb 2015 - Added GoogleMaps static image. Refresh now also forgets GPS position and camera image
+//
+// 18 Feb 2015 - Tidied up display of dividends (now $/share, not c/share). Searches for dividends if new stock added
+//
 // 18 Feb 2015 - Uses Iron Router now :-) Included About, Help and Services pages
 //
 // 17 Feb 2015 - Added a busy indicator that runs on startup. Also moved code inside startup()
@@ -152,7 +154,7 @@ if(Meteor.isServer) {
   });
       
   Meteor.methods({
-    getStock: function(stock, id) {
+    getStock: function(stock, id, doDividend) {
       var url = 'http://finance.yahoo.com/d/quotes?s=';
       var format = '&f=sl1c1p2'; // Values from Yahoo in CSV format
 
@@ -245,6 +247,11 @@ if(Meteor.isServer) {
               XDiv: "", Paid: "", Franked: "", Percent: "",
               createdAt: new Date() // current time
             });
+            if (doDividend)
+            {
+                greet("Searching dividends for new stock");
+                Meteor.call('getDividends'); // Refresh the dividends incase there's one for this stock
+            }
         } else // Update existing item
         {
             var refresh = Stocks.find({_id: id}, {reactive: false}).fetch(); // Get the record incase dividend processing changed it
@@ -307,6 +314,14 @@ if(Meteor.isServer) {
           var Franked = content.substring(pStart+pXDiv+pPaid+pFrank,pStart+pXDiv+pPaid+pFrank+pFrankE);
           var Percent = content.substring(pStart+pXDiv+pPaid+pFrank+pFrankE+pPC,pStart+pXDiv+pPaid+pFrank+pFrankE+pPC+pPCE);
           greet(sStock + " : [" + strXDiv + "] [" + strPaid + "] [" + Franked + "] [" + Percent + "]");
+          
+          
+          var f = parseFloat(Franked); // No trailing 0s in franked amount. Eg 30.00 -> 30
+          f = f / 100;                 // Prefer to store as dollars/share not cents per share
+          f = f.toFixed(2);
+          Franked = f.toString();
+    
+          Percent = parseInt(Percent);  // Whole percentages only ie 100.00% -> 100
           
           greet("ticker:" + toRefresh[i].ticker);
           Stocks.update(toRefresh[i]._id,{
@@ -453,6 +468,24 @@ if(Meteor.isClient) {
         return 'Position is (' + GPSlat.toFixed(4) + ',' + GPSlong.toFixed(4) + ')';      
       }
     },
+    
+    GoogleMap: function () {  
+      if (!Session.get("S-GPSLat")) return 'blank.gif'; // Starting up
+              
+      GPSlat = Session.get("S-GPSLat");
+      GPSlong= Session.get("S-GPSLong");
+      if (GPSlong == 0) {
+        return "blank.gif"; // No valid GPS so no map (ie blank image)
+      } else {
+        var map = "https://maps.googleapis.com/maps/api/staticmap?center=" + GPSlat + "," + GPSlong;
+        map += "&zoom=15"; // Bigger numbers are more zoomed in
+        map += "&size=300x300";
+        map += "&maptype=roadmap";
+        map += "&markers=" + GPSlat + "," + GPSlong; // Red marker (Default) at current position   
+        greet("Google map: "+map)
+        return map;    
+      }
+    },
 
     Camera: function () {  
       return Session.get("S-camera");
@@ -478,7 +511,7 @@ if(Meteor.isClient) {
         if (Session.get("S-busy") != 'N') {
           return "busy.gif"; // "Loading data...";
         } else {
-          return "ok.gif"; // Session.get("S-busy");
+          return "blank.gif"; // Nothing (ie not busy)
         }
     },
     
@@ -556,7 +589,7 @@ if(Meteor.isClient) {
         
 //        greet("Submit text is " + text);
         
-        Meteor.call('getStock', text, 0);
+        Meteor.call('getStock', text, 0, true);
 //        greet("getStock returned");
 
         event.target.text.value = ''; // Clear form
@@ -564,19 +597,27 @@ if(Meteor.isClient) {
     },
      
     "click .refresh": function () {
-      // Forces all the stocks to be refreshed
+      // Forces all the stocks to be refreshed - and also forgets GPS position and any camera image
           
       if (Meteor.isCordova) {
-        navigator.vibrate(200); // Vibrate handset
+        navigator.vibrate(100); // Vibrate handset
         greet("Bzzzzz");      
       }
+    
+      // Forget GPS and Camera items too
+
+      Session.set("S-GPSLat", "");
+      Session.set("S-GPSLong", 0);
+      Session.set("S-camera", '');
+      var image = document.getElementById('CordovaImage');
+      image.src = "blank.gif";
     
       var toRefresh = Stocks.find({}, {reactive: false}).fetch();
       for (var i in toRefresh)
       {
         var str = toRefresh[i].ticker;
         greet("Refreshing "+str+" at "+toRefresh[i]._id);
-        Meteor.call('getStock', str, toRefresh[i]._id);
+        Meteor.call('getStock', str, toRefresh[i]._id, false);
       }
       
       Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
@@ -590,7 +631,7 @@ if(Meteor.isClient) {
       if (Meteor.isCordova) {
         Session.set("S-GPSLat", "Finding position...");
         Session.set("S-GPSLong", 0);
-        navigator.vibrate(50); // Vibrate handset
+        navigator.vibrate(40); // Vibrate handset
         navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, { timeout: 3000 }); // Update GPS position - max wait 3 secs        
       } else {
         Session.set("S-GPSLat", "No GPS device");
@@ -609,7 +650,7 @@ if(Meteor.isClient) {
         Session.set("S-camera", "No Camera available");
       }
     }, // camera
-
+    
     "click .sortStocks": function () {
       // Sort result by Stock name
       var sorting = Session.get("S-sortStocks");
@@ -663,9 +704,9 @@ if(Meteor.isClient) {
       var stock = this.ticker;
       greet("Updating "+stock);
       if (Meteor.isCordova) {
-        navigator.vibrate(50); // Vibrate handset briefly
+        navigator.vibrate(40); // Vibrate handset briefly
       }
-      Meteor.call('getStock', stock, this._id);
+      Meteor.call('getStock', stock, this._id, true);
     }
     
   });
@@ -695,12 +736,14 @@ if(Meteor.isClient) {
     
     dXDiv: function () { // Formats XDiv date display
         if (isToday(this.XDiv)) return "XD"; // If it's today, say so
-        return this.XDiv; // otherwise return date it's XD
+        var niceDate = this.XDiv.replace(/^0/, ''); // Drop any leading zero eg 02 Apr -> 2 Apr  
+        return niceDate; // Return date it's XD (minus any leading 0)
     },
     
     dPaid: function () { // Formats Paid date display
         if (isToday(this.Paid)) return "Paid"; // If it's today, say so
-        return this.Paid; // otherwise return date it's paid
+        var niceDate = this.Paid.replace(/^0/, ''); // Drop any leading zero eg 02 Apr -> 2 Apr       
+        return niceDate; // Return date it's paid (minus any leading 0)
     }
   });
 //  ========================    

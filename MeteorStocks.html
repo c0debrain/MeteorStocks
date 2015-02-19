@@ -27,8 +27,8 @@
               <span class="icon-bar"></span>
               <span class="icon-bar"></span> <!-- 3 bar graphic for menus on mobile -->
             </button>
-          <a class="navbar-brand" href="{{pathFor 'home'}}">Meteor Stocks</a>
-        </div>
+            <a class="navbar-brand" href="{{pathFor 'home'}}">Meteor Stocks</a>
+          </div>
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
             <li><a href="{{pathFor 'services'}}"><span class="badge">Services <span class="glyphicon glyphicon-paperclip"></span></span></a></li>
@@ -52,7 +52,7 @@
 
 <template name="footer">
 <div class="footer"><hr/>
-<p>&copy; 2014 Jon Brown - version 18 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 19 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
 </div> <!-- footer -->
 </template>
 
@@ -64,13 +64,11 @@
 <button class="location"><span class="glyphicon glyphicon-map-marker"></span></button>
 <button class="camera"><span class="glyphicon glyphicon-camera"></span></button>
 </h3>
-<header>
 <form class="new-stock">
-<input type="text" name="text" placeholder="&nbsp;Stock to add" /><img src='{{BusySymbol}}'>
-</form>
-</header>
-
+<input type="text" name="text" placeholder="Enter a stock or index" /><img src='{{BusySymbol}}'>
+</form><!-- removed header tag wraping this -->
 {{GPSLocation}} {{Camera}}<br>
+<img src='{{GoogleMap}}'>
 
 <!--<br>Table based Heatmap - does not work correctly in Chrome<br>
 <table style="max-width: 95%; font-size: 1px; font-family: monospace">{{#each stocks}}{{> heatmap}}
@@ -96,16 +94,14 @@ None-table based Heatmap works in Firefox and Chrome. font-size of 1px is used t
 </table>
 
 <IMG width=90% SRC="http://www.asx.com.au/asx/widget/chart.do?asxCode=XJO&type=INDEX&{{REFRESHED}}" alt="<XJO Chart>"/><br><br>
-
 <IMG width=90% SRC="https://chart.finance.yahoo.com/z?s=^DJI&t=1d&{{REFRESHED}}" alt="<Dow Chart>"/><br>
-
 <IMG width=90% SRC="https://chart.finance.yahoo.com/t?s=AUDUSD=X&{{REFRESHED}}" alt="<Gold Chart>"/><br><br>
 
-<img id="CordovaImage" width='90%' height='90%'/> <!-- Any photo goes here scaled to fit -->
+<img id="CordovaImage" width="98%" height="98%"/> <!-- Any photo goes here scaled to fit. % not supported in HTML5 -->
 {{> footer}}
 {{REFRESHED_Nice}}<br>
 [{{GreetDebug}}]
-</div> <!-- container -->
+</div><!-- container -->
 </template>
 
 <template name="about">
@@ -128,6 +124,8 @@ Progress to date includes:<br><br>
 <li>Supports indexes eg ^FTSE, ^AXJO, ^NDX, ^GSPC(S&P500)</li>
 <li>Busy graphic while loading data</li>
 <li>Now includes Iron-Router</li>
+<li>Tidied up dividends (now $/share, not c/share) and searches for dividends if a new stock is added</li>
+<li>Added GoogleMaps static image. Refresh now also forgets GPS position and camera image</li>
 </ul>
 {{> footer}}
 </div> <!-- container -->
@@ -141,7 +139,8 @@ Progress to date includes:<br><br>
 Really? You need help with this? Perhaps try some of these ideas....<br><br>
 <ul>
 <li>Try adding a stock like CBA or IBM.US</li>
-<li>Use 'Location' to see your GPS position</li>
+<li>Touch or hover on items in the heatmap</li>
+<li>Have a play with the GPS position</li>
 <li>Give the Camera option a go</li>
 </ul>
 {{> footer}}
@@ -170,8 +169,8 @@ We're busy building some...
 
 <template name="stock">
   <tr>
-  <td style="text-align:left"><button class="update">{{code}}</button><br><span class="{{getDateClass XDiv}} ">{{dXDiv}}</span></td>
-  <td>{{last}}<br><span class="{{getDateClass Paid}} ">{{dPaid}}</span></td>
+  <td style="text-align:left"><button class="update">{{code}}</button><br><span class="{{getDateClass XDiv}}">{{dXDiv}}</span></td>
+  <td>{{last}}<br><span class="{{getDateClass Paid}}">{{dPaid}}</span></td>
   <td><span class="{{getSignColour chg}}">{{chg}}</span><br>{{Franked}}</td>
   <td><span class="{{getSignClass chgPC}}">{{chgPC}}</span><br>{{Percent}}</td>
   <td><button class="delete"><span class="glyphicon glyphicon-remove"></span></button></td>
