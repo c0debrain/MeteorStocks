@@ -18,6 +18,7 @@
 //
 // Used packages:       $ meteor list
 //
+//                      Cheerio                                 0.3.2   jQuery for HTML parsing - $meteor mrt add:cheerio
 //                      iron-router                             1.0.7   Enables multiple pages eg About etc
 //                      cordova:org.apache.cordova.vibration    0.3.12
 //                      cordova:org.apache.cordova.geolocation  0.3.11
@@ -29,32 +30,13 @@
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
-
-/*
-
-Idea for price sensitive details from:
-
-http://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode=&timeframe=R&dateReleased=22%2F12%2F2014
-
-(date in DD/MM/CCYY)
-
-Basically, find P = <td class="pricesens">, items after next <td> is text of the release.
-then go back P-60. Search for <tr> then <td> - Next 3 chars are the ticker
-Then search fwd for <td> and next chars are time if tou want that.
-
-Perhaps make text of release appear on hover over sensitive flag / icon?
-
-Code snippet is below:
-
-<tr class="altrow">
-<td>NXM</td>
-<td>12:38 PM</td>
-
-<td class="pricesens"><img src="/images/asterix.gif" class="pricesens" alt="asterix" title="price sensitive"></td>
-
-<td>Triumph Gold Project Update</td>
-
-*/
+// 24 Feb 2015 - News page showing heatmap and text of any price sensitive news
+//
+// 23 Feb 2015 - Added price sensitive news items from ASX.com.au - uses Cheerio jQuery package
+//               Improved Mongo code by writing only changed parts of records - not whole record
+//
+// 20 Feb 2015 - Vibrate on delete and shorter greet message for Google Maps
+//
 // 19 Feb 2015 - Added GoogleMaps static image. Refresh now also forgets GPS position and camera image
 //
 // 18 Feb 2015 - Tidied up display of dividends (now $/share, not c/share). Searches for dividends if new stock added
@@ -154,6 +136,7 @@ if(Meteor.isServer) {
   });
       
   Meteor.methods({
+    
     getStock: function(stock, id, doDividend) {
       var url = 'http://finance.yahoo.com/d/quotes?s=';
       var format = '&f=sl1c1p2'; // Values from Yahoo in CSV format
@@ -254,16 +237,16 @@ if(Meteor.isServer) {
             }
         } else // Update existing item
         {
-            var refresh = Stocks.find({_id: id}, {reactive: false}).fetch(); // Get the record incase dividend processing changed it
-            var rec = refresh[0]; // First entry in the array is the record
+// old way          var refresh = Stocks.find({_id: id}, {reactive: false}).fetch(); // Get the record incase dividend processing changed it
+// old way          var rec = refresh[0]; // First entry in the array is the record
             
             greet(ticker +" updated");
 //          greet("(dividend is " + rec.XDiv + "," + rec.Paid + "," + rec.Franked + "," + rec.Percent + ")");
 
             Stocks.update(id,{
-              ticker: ticker, last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc),
-              XDiv: rec.XDiv, Paid: rec.Paid, Franked: rec.Franked, Percent: rec.Percent,
-              createdAt: new Date() // current time
+              $set: { last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc),
+                    createdAt: new Date() // current time
+              }
             });        
         }
       }); // Callback
@@ -314,8 +297,7 @@ if(Meteor.isServer) {
           var Franked = content.substring(pStart+pXDiv+pPaid+pFrank,pStart+pXDiv+pPaid+pFrank+pFrankE);
           var Percent = content.substring(pStart+pXDiv+pPaid+pFrank+pFrankE+pPC,pStart+pXDiv+pPaid+pFrank+pFrankE+pPC+pPCE);
           greet(sStock + " : [" + strXDiv + "] [" + strPaid + "] [" + Franked + "] [" + Percent + "]");
-          
-          
+           
           var f = parseFloat(Franked); // No trailing 0s in franked amount. Eg 30.00 -> 30
           f = f / 100;                 // Prefer to store as dollars/share not cents per share
           f = f.toFixed(2);
@@ -324,26 +306,96 @@ if(Meteor.isServer) {
           Percent = parseInt(Percent);  // Whole percentages only ie 100.00% -> 100
           
           greet("ticker:" + toRefresh[i].ticker);
-          Stocks.update(toRefresh[i]._id,{
-              ticker: toRefresh[i].ticker, last: parseFloat(toRefresh[i].last), chg: parseFloat(toRefresh[i].chg), chgpc: parseFloat(toRefresh[i].chgpc),
-              XDiv: strXDiv, Paid: strPaid, Franked: Franked, Percent: Percent, // Store dividend information
-              createdAt: new Date() // current time
-            }); 
+
+          Stocks.update(toRefresh[i]._id, {
+              $set: { XDiv: strXDiv, Paid: strPaid, Franked: Franked, Percent: Percent, // Store dividend information
+                      createdAt: new Date() // current time
+                    }
+          }); 
         }
         else
         {
-//        greet("Did not find anything - or it's not Australian so we didn't look");
-          Stocks.update(toRefresh[i]._id,{
-              ticker: toRefresh[i].ticker, last: parseFloat(toRefresh[i].last), chg: parseFloat(toRefresh[i].chg), chgpc: parseFloat(toRefresh[i].chgpc),
-              XDiv: "", Paid: "", Franked: "", Percent: "", // Wipe any existing dividend that is not longer relevant
-              createdAt: new Date() // current time
-            });
+//        greet("Did not find anything - or it's not Australian so we didn't look");      
+          Stocks.update(toRefresh[i]._id, {
+              $set: { XDiv: "", Paid: "", Franked: "", Percent: "", // Wipe any existing dividend that is no longer relevant
+                      createdAt: new Date() // current time
+                    }
+            }); 
         }
       }
       return true;
     }, // getDividends
 
-    deleteStock: function(id){      
+/*  Price sensitive details from:
+
+    http://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode=&timeframe=R&dateReleased=22%2F12%2F2014 (date in DD/MM/CCYY)
+ or http://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode=LLC&timeframe=D&period=T (for todays)
+
+    Returned HTML snippet:
+
+    <tr class="altrow">
+    <td>NXM</td>
+    <td>12:38 PM</td>
+    <td class="pricesens"><img src="/images/asterix.gif" class="pricesens" alt="asterix" title="price sensitive"></td>
+    <td>Triumph Gold Project Update</td>
+
+    Logic is: Find img with asterix.gif, then the parent, then next tag is the news <td>
+
+    Still to do is to mark the heatmap to reflect the presence of sensitive news - maybe add a News page
+*/
+
+    getStockNews: function(ticker, id) { // Looks up price sensitive news - Need Cheerio ie $meteor add mrt:cheerio
+        greet("Finding news for " + ticker + " id=" + id);
+        var aussie = ticker.indexOf(".AX");
+        if (aussie < 0) {
+            greet("Skipping news search for non-Australian " + ticker);
+            return;
+        }
+        var stock = ticker.substr(0,aussie);
+        greet("Finding news for " + stock);
+        var url = 'http://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode=' + stock + '&timeframe=D&period=T';
+        var result = HTTP.call("GET", url);
+        var content = result.content;
+//      greet("Content length:" + content.length);
+//      greet("About to load into Cheerio...");
+        var $ = cheerio.load(content);
+//      greet("Loaded into Cheerio...");
+        var count = 0;
+        var newsreel = ""; // = stock + ":";
+        $('img[class=pricesens]').each(function()
+        {   
+/*
+            <tr class=""><td>23/02/2015</td><td class="pricesens">
+            <img src="/images/asterix.gif" class="pricesens" alt="asterix" title="price sensitive">
+            </td><td>Results for Announcement to the Market           </td>
+*/
+            var src = $(this).attr('src').toString();
+            if (src.indexOf("asterix.gif") > 0) // Important ones contain /images/asterix.gif
+            {
+//              greet("--> " + $(this).parent().siblings().toString());
+                var news = $(this).parent().next().text(); // Item is the next item of img tags parent
+                news = news.trim(); // Remove unwanted whitespace
+                greet("Found news for " + stock + ":" + news);
+                if (count > 0) {     // This is not the first news item
+                    newsreel += "^"; // so seperate them with delimeter
+                }
+                newsreel += news;
+                count++;
+            }
+        }); // S()
+        greet(stock + " has " + count + " news item(s)");
+        Stocks.update(id, {
+            $set: { News: newsreel,
+                createdAt: new Date() // current time
+            }
+            }); 
+        return;
+    }, // getStockNews
+    
+    deleteStock: function(id){
+      if (Meteor.isCordova) {
+        navigator.vibrate(40); // Vibrate handset
+      } 
       var del = Stocks.find({_id: id}, {reactive: false}).fetch(); // Get the record to delete so we can write the stock to stdout
       var ticker = del[0].ticker; // First entry in the array is the record
       greet("\nDeleting "+ticker + " [" + id + "]");
@@ -482,7 +534,7 @@ if(Meteor.isClient) {
         map += "&size=300x300";
         map += "&maptype=roadmap";
         map += "&markers=" + GPSlat + "," + GPSlong; // Red marker (Default) at current position   
-        greet("Google map: "+map)
+        greet("Google map");
         return map;    
       }
     },
@@ -526,9 +578,8 @@ if(Meteor.isClient) {
       }
     }
   });
-  
 //  ========================    
-  
+
   Handlebars.registerHelper('getSignColour', function(number) {
     if (number > 0) return 'priceUp';
     if (number < 0) return 'priceDown';
@@ -591,7 +642,7 @@ if(Meteor.isClient) {
         
         Meteor.call('getStock', text, 0, true);
 //        greet("getStock returned");
-
+        
         event.target.text.value = ''; // Clear form
         return false; // Prevent default form submit
     },
@@ -618,6 +669,9 @@ if(Meteor.isClient) {
         var str = toRefresh[i].ticker;
         greet("Refreshing "+str+" at "+toRefresh[i]._id);
         Meteor.call('getStock', str, toRefresh[i]._id, false);
+        
+        greet("Refreshing News for " + str);
+        Meteor.call('getStockNews', str, toRefresh[i]._id);
       }
       
       Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
@@ -735,7 +789,7 @@ if(Meteor.isClient) {
     },
     
     dXDiv: function () { // Formats XDiv date display
-        if (isToday(this.XDiv)) return "XD"; // If it's today, say so
+        if (isToday(this.XDiv)) return "XDiv"; // If it's today, say so
         var niceDate = this.XDiv.replace(/^0/, ''); // Drop any leading zero eg 02 Apr -> 2 Apr  
         return niceDate; // Return date it's XD (minus any leading 0)
     },
@@ -744,6 +798,11 @@ if(Meteor.isClient) {
         if (isToday(this.Paid)) return "Paid"; // If it's today, say so
         var niceDate = this.Paid.replace(/^0/, ''); // Drop any leading zero eg 02 Apr -> 2 Apr       
         return niceDate; // Return date it's paid (minus any leading 0)
+    },
+    
+    News: function () { // Identify if there are news items      
+        if (this.News) return "*";
+        return "";
     }
   });
 //  ========================    
@@ -763,5 +822,36 @@ if(Meteor.isClient) {
     }
     
   });
+//  ========================
+
 //  ========================    
+    Template.news.helpers({
+//  ========================    
+
+    stocks: function () {
+        return Stocks.find({"News":{$ne:""}}, {sort: {chgpc: -1}}); // News only items sorted by largest % change
+    }
+});
+    
+//  ========================
+
+//  ========================    
+    Template.stocknews.helpers({
+//  ========================    
+
+    code: function () { // Formats the stock code (removes any index name from the display)
+      var str = this.ticker;      
+      var dotpos = str.indexOf('.');
+      return str.substring(0,dotpos);
+    },
+    
+    News: function () { // Formats stock news
+      if (!this.News) return ""; // No news - should never see this as Mongo call only returns news items
+      var news = this.News.split("^");
+      return news[0]; // This needs work to return all the news items nicely
+    }
+
+    });
+//  ========================
+
 } //is Client

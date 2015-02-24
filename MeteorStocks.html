@@ -31,6 +31,7 @@
           </div>
         <div class="navbar-collapse collapse">
           <ul class="nav navbar-nav">
+            <li><a href="{{pathFor 'news'}}"><span class="badge">News <span class="glyphicon glyphicon-flag"></span></span></a></li>
             <li><a href="{{pathFor 'services'}}"><span class="badge">Services <span class="glyphicon glyphicon-paperclip"></span></span></a></li>
             <li class="dropdown">
             <a href="#" class="dropdown-toggle" data-toggle="dropdown">More... <span class="caret"></span></a>
@@ -52,7 +53,7 @@
 
 <template name="footer">
 <div class="footer"><hr/>
-<p>&copy; 2014 Jon Brown - version 19 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 24 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
 </div> <!-- footer -->
 </template>
 
@@ -68,7 +69,7 @@
 <input type="text" name="text" placeholder="Enter a stock or index" /><img src='{{BusySymbol}}'>
 </form><!-- removed header tag wraping this -->
 {{GPSLocation}} {{Camera}}<br>
-<img src='{{GoogleMap}}'>
+<img src='{{GoogleMap}}'><br>
 
 <!--<br>Table based Heatmap - does not work correctly in Chrome<br>
 <table style="max-width: 95%; font-size: 1px; font-family: monospace">{{#each stocks}}{{> heatmap}}
@@ -126,6 +127,9 @@ Progress to date includes:<br><br>
 <li>Now includes Iron-Router</li>
 <li>Tidied up dividends (now $/share, not c/share) and searches for dividends if a new stock is added</li>
 <li>Added GoogleMaps static image. Refresh now also forgets GPS position and camera image</li>
+<li>Now with Price Sensitive news from ASX.com.au with Cheerio jQuery</li>
+<li>Improved Mongo code by writing only changed parts of records</li>
+<li>News page showing nested template coding</li>
 </ul>
 {{> footer}}
 </div> <!-- container -->
@@ -158,10 +162,38 @@ We're busy building some...
 </div> <!-- container -->
 </template>
 
+<template name="news">
+{{> nav}}  
+<div class="container">
+<h3>News</h3>
+<br>
+<span style="max-width: 95%; font-size: 1px; font-family: monospace">
+{{#each stocks}}{{> heatmap}}
+{{/each}} <!-- auto-wrap breaks if this on the same line as above - whoa! -->
+<br>
+</span>
+<br>
+<!-- Price sensitive announcements for your stocks-->
+<table class="table table-striped">
+<!--
+<thead><tr><th style="text-align:left">Stock</th>
+<th style="text-align:left">News</th></tr></thead>
+-->
+<tbody>
+{{#each stocks}}
+{{> stocknews}}
+{{/each}}
+</tbody>
+</table>
+{{> footer}}
+</div> <!-- container -->
+</template>
+
 <template name="heatmap">
 <!--<span class="{{getHeatColour chgPC}}">&nbsp;{{code}}&nbsp;</span>-->
 <a href="#" class="xtooltip" id="{{getHeatColourStyle chgPC}}">&nbsp;{{code}}&nbsp;<span><img class="xcallout"
-/><strong><center>{{last}}</center></strong><center>{{chgPC}}%</center></span></a></template>
+/><strong><center>{{last}}</center></strong><center>{{chgPC}}%</center></span></a>
+</template>
 
 <!-- This Bootstrap tooltip line works on it's own but not inside a Meteor Template
 <a href="#" data-toggle="tooltip" data-placement="top" data-original-title="$75.63 +0.3%">CBA</a>
@@ -169,10 +201,17 @@ We're busy building some...
 
 <template name="stock">
   <tr>
-  <td style="text-align:left"><button class="update">{{code}}</button><br><span class="{{getDateClass XDiv}}">{{dXDiv}}</span></td>
+  <td style="text-align:left"><button class="update">{{code}}</button><span class="stocknews">{{News}}</span><br><span class="{{getDateClass XDiv}}">{{dXDiv}}</span></td>
   <td>{{last}}<br><span class="{{getDateClass Paid}}">{{dPaid}}</span></td>
   <td><span class="{{getSignColour chg}}">{{chg}}</span><br>{{Franked}}</td>
   <td><span class="{{getSignClass chgPC}}">{{chgPC}}</span><br>{{Percent}}</td>
   <td><button class="delete"><span class="glyphicon glyphicon-remove"></span></button></td>
+  </tr>
+</template>
+
+<template name="stocknews">
+  <tr>
+  <td style="text-align:left"><a href="http://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode={{code}}&timeframe=D&period=T">{{code}}</a></td>
+  <td style="text-align:left">{{News}}</td>
   </tr>
 </template>

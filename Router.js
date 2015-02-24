@@ -4,4 +4,5 @@ Router.map(function() {
   this.route('about');
   this.route('help');
   this.route('services');
+  this.route('news');
 });

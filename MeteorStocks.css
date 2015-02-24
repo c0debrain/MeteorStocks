@@ -12,9 +12,8 @@ a.xtooltip:hover span{ display:inline; position:absolute; border:2px silver; col
 a.xtooltip span { border-radius:2px; box-shadow: 0px 0px 8px 4px gray;
 /*opacity: 0.8;*/ }
 
-
-.table-striped { /* Make table take up much less space */
-  width: 50%;
+.table-striped { /* Slightly smaller than the default. HAve used 50% too for desktop/laptop */
+  width: 95%;
 }
 
 td { /* JB */
@@ -34,6 +33,14 @@ table thead tr th { /* JB */
 
 .dateNoMatch {
 /* Nothing special */
+}
+
+/* Stock news alert */
+
+.stocknews {
+  color: black;
+  font-weight: bold;
+  background: yellow;
 }
 
 /* Stock movement colours */
