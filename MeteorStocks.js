@@ -30,6 +30,10 @@
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
+//  4 Mar 2015 - Added Debug feature and awesome Callback from Meteor.Call
+//
+// 27 Feb 2015 - Set news to "" for newly added stock
+//
 // 24 Feb 2015 - News page showing heatmap and text of any price sensitive news
 //
 // 23 Feb 2015 - Added price sensitive news items from ASX.com.au - uses Cheerio jQuery package
@@ -72,43 +76,12 @@
 
 // These functions are available on both the client and the server ===========================
 
-/*
-var server_busy = false;
-
-function set_server_busy() {
-    server_busy = true;
-    greet("Server busy");
-}
-
-function set_server_idle() {
-    server_busy = false;
-    greet("Server idle");
-}
-
-function get_server_busy() {
-    if (server_busy) {
-        greet("Server queried : Busy");
-    } else {
-        greet("Server queried : Idle");
-    }
-    return server_busy;
-}
-*/
-
 var greet = function(text) {
     console.log(text);
     if(Meteor.isClient) {
-        Session.set("S-Greet", text);
+        if (Session.get("S-Debug")) Session.set("S-Greet", text); // If Debug is on, show status message
     }
 }
-
-/*
-  var ripStock = function(csv) {
-    prices = [];
-    prices = csv.split(",");
-    return prices[0]; // Stock code
-}
-*/
 
 var isToday = function(date) { // Utility function to see if passed date (dd Mmm) is the same as today
     var d = new Date();
@@ -227,13 +200,16 @@ if(Meteor.isServer) {
             greet(ticker +" Created");
             Stocks.insert({
               ticker: ticker, last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc),
-              XDiv: "", Paid: "", Franked: "", Percent: "",
+              XDiv: "", Paid: "", Franked: "", Percent: "", News: "",
               createdAt: new Date() // current time
             });
             if (doDividend)
             {
                 greet("Searching dividends for new stock");
-                Meteor.call('getDividends'); // Refresh the dividends incase there's one for this stock
+                Meteor.call('getDividends', function (err, data) {
+                    if (err) greet("Dividend search FAILED");
+                    else greet("Dividends checked OK");
+                }); // Refresh the dividends incase there's one for this stock
             }
         } else // Update existing item
         {
@@ -437,6 +413,8 @@ if(Meteor.isClient) {
         Session.set("S-GPSLong", 0); // be off
         
         Session.set("S-camera", '');
+        Session.set("S-Debug", true); // Debugging on my default
+                    
     }); // Client startup
     
     function onGPSSuccess(position) {
@@ -553,6 +531,10 @@ if(Meteor.isClient) {
       return Session.get("S-Refresh");
     },
 
+    Debug: function () {
+      return Session.get("S-Debug");
+    },
+    
     GreetDebug: function () { // Last Greet msg goes to device - not just console
       return Session.get("S-Greet");
     },
@@ -639,9 +621,11 @@ if(Meteor.isClient) {
         var text = event.target.text.value;
         
 //        greet("Submit text is " + text);
-        
-        Meteor.call('getStock', text, 0, true);
-//        greet("getStock returned");
+        greet("Adding new stock");        
+        Meteor.call('getStock', text, 0, true, function (err, data) {
+                if (err) greet("Stock add FAILED");
+                else greet("Stock added OK");
+        });
         
         event.target.text.value = ''; // Clear form
         return false; // Prevent default form submit
@@ -668,13 +652,24 @@ if(Meteor.isClient) {
       {
         var str = toRefresh[i].ticker;
         greet("Refreshing "+str+" at "+toRefresh[i]._id);
-        Meteor.call('getStock', str, toRefresh[i]._id, false);
+        Meteor.call('getStock', str, toRefresh[i]._id, false, function (err, data) {
+                if (err) greet("getStock FAILED");
+                else greet("getStock refreshed OK");
+        });
         
         greet("Refreshing News for " + str);
-        Meteor.call('getStockNews', str, toRefresh[i]._id);
+// Oldway        Meteor.call('getStockNews', str, toRefresh[i]._id);
+        Meteor.call('getStockNews', str, toRefresh[i]._id, function (err, data) {
+                if (err) greet("News refresh FAILED");
+                else greet("News refreshed OK");
+        });
       }
       
-      Meteor.call('getDividends'); // Refresh the dividends - but only after async process is completed
+      greet("Getting dividends");
+      Meteor.call('getDividends', function (err, data) {
+                if (err) greet("Dividend get FAILED");
+                else greet("Dividend get OK");
+        }); // Refresh the dividends - but only after async process is completed
     
       Session.set("S-Refresh", new Date()); // Forces reload of any embedded images ie stops browser cache
       
@@ -727,8 +722,18 @@ if(Meteor.isClient) {
         Session.set("S-sortChange", 1); // Now ascending order
         Session.set("S-sortStocks", 0);
       }    
-    } // sortChange
-        
+    }, // sortChange
+
+    // Add to Template.body.events
+    "change .debug input": function (event) {
+      Session.set("S-Debug", event.target.checked);
+      if (Session.get("S-Debug")) {
+        Session.set("S-Greet", "Debug now on");
+      } else {
+        Session.set("S-Greet", "");        
+      }
+    } // debug
+    
   }); // Template.home.events
 
 //  ========================    
@@ -749,7 +754,10 @@ if(Meteor.isClient) {
       // Remove this entry if x clicked
       var stock = this.ticker; // Was ripStock(this.text);
       greet("Deleting "+this.ticker);
-      Meteor.call('deleteStock', this._id);
+      Meteor.call('deleteStock', this._id, function (err, data) {
+                if (err) greet("Delete FAILED");
+                else greet("Deleted OK");
+        });
 //    Meteor.call('KillStock'); // Only for testing!!!
     },
 
@@ -760,7 +768,10 @@ if(Meteor.isClient) {
       if (Meteor.isCordova) {
         navigator.vibrate(40); // Vibrate handset briefly
       }
-      Meteor.call('getStock', stock, this._id, true);
+      Meteor.call('getStock', stock, this._id, true, function (err, data) {
+                if (err) greet("Update FAILED");
+                else greet("Updated OK");
+        });
     }
     
   });

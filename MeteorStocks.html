@@ -53,7 +53,7 @@
 
 <template name="footer">
 <div class="footer"><hr/>
-<p>&copy; 2014 Jon Brown - version 24 Feb 2015<br>Meteor 1.0.2 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 4 Mar 2015<br>Meteor 1.0.3 / Xubuntu 14.04 / Acer C720</p>
 </div> <!-- footer -->
 </template>
 
@@ -65,9 +65,13 @@
 <button class="location"><span class="glyphicon glyphicon-map-marker"></span></button>
 <button class="camera"><span class="glyphicon glyphicon-camera"></span></button>
 </h3>
+{{GreetDebug}}
 <form class="new-stock">
 <input type="text" name="text" placeholder="Enter a stock or index" /><img src='{{BusySymbol}}'>
-</form><!-- removed header tag wraping this -->
+<label class="debug">
+<input type="checkbox" checked="{{Debug}}" /> Debug
+</label>
+</form>
 {{GPSLocation}} {{Camera}}<br>
 <img src='{{GoogleMap}}'><br>
 
@@ -130,6 +134,8 @@ Progress to date includes:<br><br>
 <li>Now with Price Sensitive news from ASX.com.au with Cheerio jQuery</li>
 <li>Improved Mongo code by writing only changed parts of records</li>
 <li>News page showing nested template coding</li>
+<li>Callbacks to client from completed server calls</li>
+<li>Debug check box</li>
 </ul>
 {{> footer}}
 </div> <!-- container -->
