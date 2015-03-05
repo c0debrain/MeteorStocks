@@ -68,9 +68,6 @@
 {{GreetDebug}}
 <form class="new-stock">
 <input type="text" name="text" placeholder="Enter a stock or index" /><img src='{{BusySymbol}}'>
-<label class="debug">
-<input type="checkbox" checked="{{Debug}}" /> Debug
-</label>
 </form>
 {{GPSLocation}} {{Camera}}<br>
 <img src='{{GoogleMap}}'><br>
@@ -105,7 +102,10 @@ None-table based Heatmap works in Firefox and Chrome. font-size of 1px is used t
 <img id="CordovaImage" width="98%" height="98%"/> <!-- Any photo goes here scaled to fit. % not supported in HTML5 -->
 {{> footer}}
 {{REFRESHED_Nice}}<br>
-[{{GreetDebug}}]
+{{GreetDebug}}<br>
+<label class="debug">
+<input type="checkbox" checked="{{Debug}}" /> Debug
+</label>
 </div><!-- container -->
 </template>
 
@@ -137,6 +137,7 @@ Progress to date includes:<br><br>
 <li>Callbacks to client from completed server calls</li>
 <li>Debug check box</li>
 <li>Added this.unblock() to reduce full reload from 25 to 2 seconds</li>
+<li>More detailed button version of the heatmap on the News page</li>
 </ul>
 {{> footer}}
 </div> <!-- container -->
@@ -175,7 +176,7 @@ We're busy building some...
 <h3>News</h3>
 <br>
 <span style="max-width: 95%; font-size: 1px; font-family: monospace">
-{{#each stocks}}{{> heatmap}}
+{{#each stocks}}{{> heatmapNews}}
 {{/each}} <!-- auto-wrap breaks if this on the same line as above - whoa! -->
 <br>
 </span>
@@ -198,8 +199,14 @@ We're busy building some...
 
 <template name="heatmap">
 <!--<span class="{{getHeatColour chgPC}}">&nbsp;{{code}}&nbsp;</span>-->
-<a href="#" class="xtooltip" id="{{getHeatColourStyle chgPC}}">&nbsp;{{code}}&nbsp;<span><img class="xcallout"
-/><strong><center>{{last}}</center></strong><center>{{chgPC}}%</center></span></a>
+<a href="#" class="xtooltip" id="{{getHeatColourStyle chgPC}}">&nbsp;{{code}}&nbsp;<span><img class="xcallout"/><strong><center>{{last}}</center></strong><center>{{chgPC}}%</center></span></a>
+<!-- Alternate style is to use buttons with all the detail. Looks great...
+<button class="xtooltip" id="{{getHeatColourStyle chgPC}}">&nbsp;{{code}}&nbsp;<span><img class="xcallout"/><strong><center>{{last}}</center></strong><center>{{chgPC}}%</center></span></button>
+-->
+</template>
+
+<template name="heatmapNews">
+<button id="{{getHeatColourStyleNews chgPC}}">&nbsp;{{code}}&nbsp;<span><strong><center>{{last}}</center></strong><center>{{chgPC}}%</center></span></button>
 </template>
 
 <!-- This Bootstrap tooltip line works on it's own but not inside a Meteor Template

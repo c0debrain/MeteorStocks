@@ -31,6 +31,8 @@
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
 //  5 Mar 2015 - Added this.unblock() for getDividends, getStocks and getStockNews - zoom! Goes from ~25 seconds to 2 seconds
+//               More detailed button version of the heatmap on the News page
+//               Moved debug option to bottom of screen and defaulted it to Off
 //
 //  4 Mar 2015 - Added Debug feature and awesome Callback from Meteor.Call
 //
@@ -112,7 +114,7 @@ if(Meteor.isServer) {
       
   Meteor.methods({
     
-    getStock: function(stock, id, doDividend) {
+    getStock: function(stock, id) {
       this.unblock();
       var url = 'http://finance.yahoo.com/d/quotes?s=';
       var format = '&f=sl1c1p2'; // Values from Yahoo in CSV format
@@ -207,14 +209,6 @@ if(Meteor.isServer) {
               XDiv: "", Paid: "", Franked: "", Percent: "", News: "",
               createdAt: new Date() // current time
             });
-            if (doDividend)
-            {
-                greet("Searching dividends for new stock");
-                Meteor.call('getDividends', function (err, data) {
-                    if (err) greet("Dividend search FAILED");
-                    else greet("Dividends checked OK. " + data + " found");
-                }); // Refresh the dividends incase there's one for this stock
-            }
         } else // Update existing item
         {
 // old way          var refresh = Stocks.find({_id: id}, {reactive: false}).fetch(); // Get the record incase dividend processing changed it
@@ -424,7 +418,7 @@ if(Meteor.isClient) {
         Session.set("S-GPSLong", 0); // be off
         
         Session.set("S-camera", '');
-        Session.set("S-Debug", true); // Debugging on my default
+        Session.set("S-Debug", false); // Debugging OFF by default
                     
     }); // Client startup
     
@@ -537,9 +531,11 @@ if(Meteor.isClient) {
       return Session.get("S-Refresh").getTime();
     },
 
-    REFRESHED_Nice: function () { // Human friendly format
+    REFRESHED_Nice: function () { // Human friendly format without the timezone info eg 'GMT +11 (AEDT)'
       if (!Session.get("S-Refresh")) return "Starting up now"; // Starting up
-      return Session.get("S-Refresh");
+      var str = Session.get("S-Refresh").toString();
+      var nice = str.split("GMT")[0];
+      return "Refreshed " + nice;
     },
 
     Debug: function () {
@@ -608,6 +604,8 @@ if(Meteor.isClient) {
   Handlebars.registerHelper('getHeatColourStyle', function(number) { // Heatmap colour selection - 14 Jan 2015    
     if (isToday(this.XDiv)) return "HSXD";   // Goes XD today
     if (isToday(this.Paid)) return "HSPaid"; // Dividend paid today
+
+    if (this.News) return "HSNews"; // News for this stock
  
     if (number >=  4) return 'HSUp3';
     if (number >=  2) return 'HSUp2';
@@ -620,6 +618,24 @@ if(Meteor.isClient) {
     
     return 'HSFlat';
   });
+
+  Handlebars.registerHelper('getHeatColourStyleNews', function(number) { // Heatmap colour selection for the News page
+    if (isToday(this.XDiv)) return "HSXD";   // Goes XD today
+    if (isToday(this.Paid)) return "HSPaid"; // Dividend paid today
+
+//    if (this.News) return "HSNews"; // Already in News page so don't want to indicate that is has News again
+ 
+    if (number >=  4) return 'HSUp3';
+    if (number >=  2) return 'HSUp2';
+    if (number >=  1) return 'HSUp1';
+    if (number >   0) return 'HSUp0';
+    if (number <= -4) return 'HSDn3';
+    if (number <= -2) return 'HSDn2';
+    if (number <= -1) return 'HSDn1';
+    if (number <   0) return 'HSDn0';
+    
+    return 'HSFlat';
+  });  
   
 //  ========================    
     Template.home.events({
@@ -633,9 +649,9 @@ if(Meteor.isClient) {
         
 //        greet("Submit text is " + text);
         greet("Adding new stock");        
-        Meteor.call('getStock', text, 0, true, function (err, data) {
-                if (err) greet("Stock add FAILED");
-                else greet("Stock " + data + " added OK");
+        Meteor.call('getStock', text.toUpperCase(), 0, function (err, data) {
+            if (err) greet("Stock add FAILED");
+            else greet("Added " + data + " OK. Now doing dividends");
         });
         
         event.target.text.value = ''; // Clear form
@@ -663,16 +679,15 @@ if(Meteor.isClient) {
       {
         var str = toRefresh[i].ticker;
         greet("Refreshing "+str+" at "+toRefresh[i]._id);
-        Meteor.call('getStock', str, toRefresh[i]._id, false, function (err, data) {
-                if (err) greet("getStock FAILED");
-                else greet("getStock refreshed " + data + " OK");
+        Meteor.call('getStock', str, toRefresh[i]._id, function (err, data) {
+            if (err) greet("getStock FAILED");
+            else greet("getStock refreshed " + data + " OK");
         });
         
         greet("Refreshing News for " + str);
-// Oldway        Meteor.call('getStockNews', str, toRefresh[i]._id);
         Meteor.call('getStockNews', str, toRefresh[i]._id, function (err, data) {
-                if (err) greet("News refresh FAILED");
-                else greet("News refreshed for " + data);
+            if (err) greet("News refresh FAILED");
+            else greet("News refreshed for " + data);
         });
       }
       
@@ -694,6 +709,7 @@ if(Meteor.isClient) {
         navigator.vibrate(40); // Vibrate handset
         navigator.geolocation.getCurrentPosition(onGPSSuccess, onGPSError, { timeout: 3000 }); // Update GPS position - max wait 3 secs        
       } else {
+        greet("No GPS");
         Session.set("S-GPSLat", "No GPS device");
         Session.set("S-GPSLong", 0);
       }
@@ -706,7 +722,7 @@ if(Meteor.isClient) {
         destinationType: Camera.DestinationType.DATA_URL
         });
       } else {
-        greet("No camera"); // One day this might use the webcam for laptops etc
+        greet("No Camera"); // One day this might use the webcam for laptops etc
         Session.set("S-camera", "No Camera available");
       }
     }, // camera
@@ -766,9 +782,9 @@ if(Meteor.isClient) {
       var stock = this.ticker; // Was ripStock(this.text);
       greet("Deleting "+this.ticker);
       Meteor.call('deleteStock', this._id, function (err, data) {
-                if (err) greet("Delete FAILED");
-                else greet("Deleted " + data + " OK");
-        });
+        if (err) greet("Delete FAILED");
+        else greet("Deleted " + data + " OK");
+      });
 //    Meteor.call('KillStock'); // Only for testing!!!
     },
 
@@ -779,10 +795,10 @@ if(Meteor.isClient) {
       if (Meteor.isCordova) {
         navigator.vibrate(40); // Vibrate handset briefly
       }
-      Meteor.call('getStock', stock, this._id, true, function (err, data) {
-                if (err) greet("Update FAILED");
-                else greet("Updated " + data + " OK");
-        });
+      Meteor.call('getStock', stock, this._id, function (err, data) {
+        if (err) greet("Update FAILED");
+        else greet("Updated " + data + " OK");
+      });
     }
     
   });
@@ -831,6 +847,23 @@ if(Meteor.isClient) {
     
 //  ========================    
     Template.heatmap.helpers({
+//  ========================    
+
+    code: function () { // Formats the stock code (removes any index name from the display)
+      var str = this.ticker;      
+      var dotpos = str.indexOf('.');
+      return str.substring(0,dotpos); // Perhaps could change to not return anything for heatmap it it's an index (^) or from overseas (ie not .AX)?
+    },
+    
+    chgPC: function () { // Formats change in percent
+      return this.chgpc.toFixed(1); // 1 decimal place in Heatmap
+    }
+    
+  });
+//  ========================
+
+//  ========================    
+    Template.heatmapNews.helpers({
 //  ========================    
 
     code: function () { // Formats the stock code (removes any index name from the display)

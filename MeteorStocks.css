@@ -204,3 +204,12 @@ table thead tr th { /* JB */
 /*  font-weight: bold; */
   font-size: large;
 }
+
+/* Style for News item in heatmap - 5 Mar 2015 */
+    
+#HSNews {
+  background-color: black;
+  color: white;
+/*  font-weight: bold; */
+  font-size: large;
+}
