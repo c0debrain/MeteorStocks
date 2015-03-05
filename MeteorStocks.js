@@ -30,6 +30,8 @@
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
+//  5 Mar 2015 - Added this.unblock() for getDividends, getStocks and getStockNews - zoom! Goes from ~25 seconds to 2 seconds
+//
 //  4 Mar 2015 - Added Debug feature and awesome Callback from Meteor.Call
 //
 // 27 Feb 2015 - Set news to "" for newly added stock
@@ -111,6 +113,7 @@ if(Meteor.isServer) {
   Meteor.methods({
     
     getStock: function(stock, id, doDividend) {
+      this.unblock();
       var url = 'http://finance.yahoo.com/d/quotes?s=';
       var format = '&f=sl1c1p2'; // Values from Yahoo in CSV format
 
@@ -134,16 +137,17 @@ if(Meteor.isServer) {
         if (stock.indexOf('.') == 0) // After removing garbage the input may be nothing so will be .AX by now
         {
           greet("\nNo valid input for Yahoo");
-          return;
+          return "<unknown>";
         }
       }
       url += stock;
       url += format;
       greet("\nYahooing "+stock);
 //    greet("Finding "+stock+" via "+url);
+
       HTTP.call("GET", url, function (error, result) {
 //      Callback function:
-        if (error) return;
+        if (error) return "<error>";
         var content = result.content.replace(/\"/g, ','); // Convert all quotes to commas
         content = content.replace(/(\r\n|\n|\r)/gm,'');   // Remove special characters
  //       content = content.replace(/.AX/g, '');            // Remove the .AX from stock codes
@@ -157,7 +161,7 @@ if(Meteor.isServer) {
         if (res.length < 4)
         {
             greet("Some strange result from Yahoo - leaving now...");
-            return;
+            return "<confused>";
         }
                 
         var ticker = res[0];
@@ -181,7 +185,7 @@ if(Meteor.isServer) {
         if (chg == "N/A")
         {
             greet(ticker +" is an INVALID stock");
-            return;
+            return "<invalid>";
         }
         
         // Now check to see if one for this stock already exists - if so, do nothing
@@ -208,7 +212,7 @@ if(Meteor.isServer) {
                 greet("Searching dividends for new stock");
                 Meteor.call('getDividends', function (err, data) {
                     if (err) greet("Dividend search FAILED");
-                    else greet("Dividends checked OK");
+                    else greet("Dividends checked OK. " + data + " found");
                 }); // Refresh the dividends incase there's one for this stock
             }
         } else // Update existing item
@@ -226,15 +230,18 @@ if(Meteor.isServer) {
             });        
         }
       }); // Callback
-      return;
+      return stock;
     }, //getStock
 
     getDividends: function(){
+      this.unblock();
       var url = 'https://www.asbsecurities.co.nz/quotes/upcomingevents.aspx';
       greet("Refreshing dividends");
       var result = HTTP.call("GET", url);
       
       var toRefresh = Stocks.find({}, {reactive: false}).fetch();
+      
+      var dCount = 0;
       
       for (var i in toRefresh)
       {
@@ -261,6 +268,8 @@ if(Meteor.isServer) {
       
         if (pStart > 0)
         {
+          dCount++; // We have one with a dividend
+          
           var pXDiv = content.substring(pStart).search("</td><td>")+9;
           var pPaid = content.substring(pStart+pXDiv).search("</td><td>")+9;
           var pFrank = content.substring(pStart+pXDiv+pPaid).search("aligned")+9;
@@ -273,7 +282,7 @@ if(Meteor.isServer) {
           var Franked = content.substring(pStart+pXDiv+pPaid+pFrank,pStart+pXDiv+pPaid+pFrank+pFrankE);
           var Percent = content.substring(pStart+pXDiv+pPaid+pFrank+pFrankE+pPC,pStart+pXDiv+pPaid+pFrank+pFrankE+pPC+pPCE);
           greet(sStock + " : [" + strXDiv + "] [" + strPaid + "] [" + Franked + "] [" + Percent + "]");
-           
+          
           var f = parseFloat(Franked); // No trailing 0s in franked amount. Eg 30.00 -> 30
           f = f / 100;                 // Prefer to store as dollars/share not cents per share
           f = f.toFixed(2);
@@ -299,7 +308,7 @@ if(Meteor.isServer) {
             }); 
         }
       }
-      return true;
+      return dCount;
     }, // getDividends
 
 /*  Price sensitive details from:
@@ -321,11 +330,12 @@ if(Meteor.isServer) {
 */
 
     getStockNews: function(ticker, id) { // Looks up price sensitive news - Need Cheerio ie $meteor add mrt:cheerio
+        this.unblock();
         greet("Finding news for " + ticker + " id=" + id);
         var aussie = ticker.indexOf(".AX");
         if (aussie < 0) {
             greet("Skipping news search for non-Australian " + ticker);
-            return;
+            return ticker + " (ignored)";
         }
         var stock = ticker.substr(0,aussie);
         greet("Finding news for " + stock);
@@ -365,7 +375,7 @@ if(Meteor.isServer) {
                 createdAt: new Date() // current time
             }
             }); 
-        return;
+        return stock;
     }, // getStockNews
     
     deleteStock: function(id){
@@ -376,6 +386,7 @@ if(Meteor.isServer) {
       var ticker = del[0].ticker; // First entry in the array is the record
       greet("\nDeleting "+ticker + " [" + id + "]");
       Stocks.remove(id);
+      return ticker;
     }, // deleteStock
     
     KillStock: function(){ // Only for testing!!
@@ -624,7 +635,7 @@ if(Meteor.isClient) {
         greet("Adding new stock");        
         Meteor.call('getStock', text, 0, true, function (err, data) {
                 if (err) greet("Stock add FAILED");
-                else greet("Stock added OK");
+                else greet("Stock " + data + " added OK");
         });
         
         event.target.text.value = ''; // Clear form
@@ -654,21 +665,21 @@ if(Meteor.isClient) {
         greet("Refreshing "+str+" at "+toRefresh[i]._id);
         Meteor.call('getStock', str, toRefresh[i]._id, false, function (err, data) {
                 if (err) greet("getStock FAILED");
-                else greet("getStock refreshed OK");
+                else greet("getStock refreshed " + data + " OK");
         });
         
         greet("Refreshing News for " + str);
 // Oldway        Meteor.call('getStockNews', str, toRefresh[i]._id);
         Meteor.call('getStockNews', str, toRefresh[i]._id, function (err, data) {
                 if (err) greet("News refresh FAILED");
-                else greet("News refreshed OK");
+                else greet("News refreshed for " + data);
         });
       }
       
       greet("Getting dividends");
       Meteor.call('getDividends', function (err, data) {
                 if (err) greet("Dividend get FAILED");
-                else greet("Dividend get OK");
+                else greet("Dividend get OK. " + data + " found");
         }); // Refresh the dividends - but only after async process is completed
     
       Session.set("S-Refresh", new Date()); // Forces reload of any embedded images ie stops browser cache
@@ -756,7 +767,7 @@ if(Meteor.isClient) {
       greet("Deleting "+this.ticker);
       Meteor.call('deleteStock', this._id, function (err, data) {
                 if (err) greet("Delete FAILED");
-                else greet("Deleted OK");
+                else greet("Deleted " + data + " OK");
         });
 //    Meteor.call('KillStock'); // Only for testing!!!
     },
@@ -770,7 +781,7 @@ if(Meteor.isClient) {
       }
       Meteor.call('getStock', stock, this._id, true, function (err, data) {
                 if (err) greet("Update FAILED");
-                else greet("Updated OK");
+                else greet("Updated " + data + " OK");
         });
     }
     
