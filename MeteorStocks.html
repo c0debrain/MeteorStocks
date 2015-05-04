@@ -53,7 +53,7 @@
 
 <template name="footer">
 <div class="footer"><hr/>
-<p>&copy; 2014 Jon Brown - version 5 Mar 2015<br>Meteor 1.0.3 / Xubuntu 14.04 / Acer C720</p>
+<p>&copy; 2014 Jon Brown - version 4 May 2015<br>Meteor 1.1.0.2 / Xubuntu 14.04 / Acer C720</p>
 </div> <!-- footer -->
 </template>
 
@@ -215,7 +215,7 @@ We're busy building some...
 
 <template name="stock">
   <tr>
-  <td style="text-align:left"><button class="update">{{code}}</button><span class="stocknews">{{News}}</span><br><span class="{{getDateClass XDiv}}">{{dXDiv}}</span></td>
+  <td style="text-align:left"><button class="update">{{code}}</button><a href="{{pathFor 'news'}}"><span class="glyphicon glyphicon-flag" style="visibility: {{News}}"></span></a><br><span class="{{getDateClass XDiv}}">{{dXDiv}}</span></td>
   <td>{{last}}<br><span class="{{getDateClass Paid}}">{{dPaid}}</span></td>
   <td><span class="{{getSignColour chg}}">{{chg}}</span><br>{{Franked}}</td>
   <td><span class="{{getSignClass chgPC}}">{{chgPC}}</span><br>{{Percent}}</td>

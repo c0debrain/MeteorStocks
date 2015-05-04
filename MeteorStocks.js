@@ -18,7 +18,7 @@
 //
 // Used packages:       $ meteor list
 //
-//                      Cheerio                                 0.3.2   jQuery for HTML parsing - $meteor mrt add:cheerio
+//                      Cheerio                                 0.3.2   jQuery for HTML parsing - $meteor add mrt:cheerio
 //                      iron-router                             1.0.7   Enables multiple pages eg About etc
 //                      cordova:org.apache.cordova.vibration    0.3.12
 //                      cordova:org.apache.cordova.geolocation  0.3.11
@@ -29,6 +29,9 @@
 //                      mizzao:bootstrap-3                      3.3.1_1 HTML, CSS, and JS framework fo...
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
+//
+//  4 May 2015 - Removed CreatedAt (it was unused at slows down load time). Used ticker as _id to save space and speed load time
+//               Added a flag next to the stock if there's a news item - clicking it takes you to news. Used to just show a *
 //
 //  5 Mar 2015 - Added this.unblock() for getDividends, getStocks and getStockNews - zoom! Goes from ~25 seconds to 2 seconds
 //               More detailed button version of the heatmap on the News page
@@ -205,9 +208,10 @@ if(Meteor.isServer) {
         { // New item
             greet(ticker +" Created");
             Stocks.insert({
+              _id : ticker ,
               ticker: ticker, last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc),
-              XDiv: "", Paid: "", Franked: "", Percent: "", News: "",
-              createdAt: new Date() // current time
+              XDiv: "", Paid: "", Franked: "", Percent: "", News: ""
+//              , createdAt: new Date() // current time
             });
         } else // Update existing item
         {
@@ -218,8 +222,8 @@ if(Meteor.isServer) {
 //          greet("(dividend is " + rec.XDiv + "," + rec.Paid + "," + rec.Franked + "," + rec.Percent + ")");
 
             Stocks.update(id,{
-              $set: { last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc),
-                    createdAt: new Date() // current time
+              $set: { last: parseFloat(last), chg: parseFloat(chg), chgpc: parseFloat(chgpc)
+//                    , createdAt: new Date() // current time
               }
             });        
         }
@@ -287,8 +291,8 @@ if(Meteor.isServer) {
           greet("ticker:" + toRefresh[i].ticker);
 
           Stocks.update(toRefresh[i]._id, {
-              $set: { XDiv: strXDiv, Paid: strPaid, Franked: Franked, Percent: Percent, // Store dividend information
-                      createdAt: new Date() // current time
+              $set: { XDiv: strXDiv, Paid: strPaid, Franked: Franked, Percent: Percent // Store dividend information
+//                      , createdAt: new Date() // current time
                     }
           }); 
         }
@@ -296,8 +300,8 @@ if(Meteor.isServer) {
         {
 //        greet("Did not find anything - or it's not Australian so we didn't look");      
           Stocks.update(toRefresh[i]._id, {
-              $set: { XDiv: "", Paid: "", Franked: "", Percent: "", // Wipe any existing dividend that is no longer relevant
-                      createdAt: new Date() // current time
+              $set: { XDiv: "", Paid: "", Franked: "", Percent: "" // Wipe any existing dividend that is no longer relevant
+//                      , createdAt: new Date() // current time
                     }
             }); 
         }
@@ -365,8 +369,8 @@ if(Meteor.isServer) {
         }); // S()
         greet(stock + " has " + count + " news item(s)");
         Stocks.update(id, {
-            $set: { News: newsreel,
-                createdAt: new Date() // current time
+            $set: { News: newsreel
+//                , createdAt: new Date() // current time
             }
             }); 
         return stock;
@@ -742,11 +746,11 @@ if(Meteor.isClient) {
     "click .sortChange": function () {
       // Sort result by percent changed
       var sorting = Session.get("S-sortChange");
-      if (sorting == 1) {
-        Session.set("S-sortChange",-1); // Was ascending, now descending
+      if (sorting == -1) {
+        Session.set("S-sortChange", 1); // Now Ascending (ie biggest LOSSES first)
         Session.set("S-sortStocks", 0);
       } else {
-        Session.set("S-sortChange", 1); // Now ascending order
+        Session.set("S-sortChange",-1); // Now Descending (ie biggest GAINS first)
         Session.set("S-sortStocks", 0);
       }    
     }, // sortChange
@@ -839,8 +843,8 @@ if(Meteor.isClient) {
     },
     
     News: function () { // Identify if there are news items      
-        if (this.News) return "*";
-        return "";
+        if (this.News) return "visible"; // Was "*";
+        return "hidden"; // was "";
     }
   });
 //  ========================    

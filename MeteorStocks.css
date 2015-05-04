@@ -35,13 +35,14 @@ table thead tr th { /* JB */
 /* Nothing special */
 }
 
-/* Stock news alert */
+/* Stock news alert  - no longer used, uses a flag instead
 
 .stocknews {
   color: black;
   font-weight: bold;
   background: yellow;
 }
+*/
 
 /* Stock movement colours */
 
