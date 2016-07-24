@@ -30,6 +30,10 @@
 //
 // Bootstrap glyphicons are detailed here: http://getbootstrap.com/components/
 //
+// ** IDEA **    Lookup analyst recommendations (eg https://au.finance.yahoo.com/q/ao?s=CSL.AX). Parse for tabledata1 to get values
+//
+//  7 Nov 2015 - Upgraded to work with latest Meteor, new Android SDK etc
+//
 //  4 May 2015 - Removed CreatedAt (it was unused at slows down load time). Used ticker as _id to save space and speed load time
 //               Added a flag next to the stock if there's a news item - clicking it takes you to news. Used to just show a *
 //
@@ -261,7 +265,9 @@ if(Meteor.isServer) {
         {
             var to_find = sStock.substr(0,aussie);
             greet("Finding dividend for " + to_find + " (" + sStock + ")");
-            pStart = content.search(to_find + "&amp;exchange=ASX");
+            pStart = content.search("=" + to_find + "&amp;exchange=ASX");
+	    // Now includes "=" before ticker search to stop false
+	    // positives on, for example YTMLLC for LLC - April 2016
         }
       
         if (pStart > 0)
